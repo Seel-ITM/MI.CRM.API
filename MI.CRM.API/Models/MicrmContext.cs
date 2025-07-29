@@ -15,13 +15,13 @@ public partial class MicrmContext : DbContext
     {
     }
 
+    public virtual DbSet<ActivityType> ActivityTypes { get; set; }
+
     public virtual DbSet<Budget> Budgets { get; set; }
 
     public virtual DbSet<BudgetCategory> BudgetCategories { get; set; }
 
     public virtual DbSet<BudgetType> BudgetTypes { get; set; }
-
-    public virtual DbSet<Document> Documents { get; set; }
 
     public virtual DbSet<Project> Projects { get; set; }
 
@@ -35,6 +35,8 @@ public partial class MicrmContext : DbContext
 
     public virtual DbSet<Task> Tasks { get; set; }
 
+    public virtual DbSet<TaskStatus> TaskStatuses { get; set; }
+
     public virtual DbSet<TasksNew> TasksNews { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
@@ -46,6 +48,14 @@ public partial class MicrmContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.UseCollation("SQL_Latin1_General_CP1_CI_AS");
+
+        modelBuilder.Entity<ActivityType>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Activity__3214EC07943EA686");
+
+            entity.Property(e => e.Description).HasMaxLength(255);
+            entity.Property(e => e.Name).HasMaxLength(100);
+        });
 
         modelBuilder.Entity<Budget>(entity =>
         {
@@ -95,22 +105,6 @@ public partial class MicrmContext : DbContext
             entity.Property(e => e.Name)
                 .HasMaxLength(100)
                 .IsUnicode(false);
-        });
-
-        modelBuilder.Entity<Document>(entity =>
-        {
-            entity.HasKey(e => e.DocumentId).HasName("PK__Document__1ABEEF0FDEC9CE05");
-
-            entity.Property(e => e.DocumentName).HasMaxLength(255);
-            entity.Property(e => e.DocumentUrl).HasMaxLength(255);
-
-            entity.HasOne(d => d.Project).WithMany(p => p.Documents)
-                .HasForeignKey(d => d.ProjectId)
-                .HasConstraintName("FK__Documents__Proje__46E78A0C");
-
-            entity.HasOne(d => d.Task).WithMany(p => p.Documents)
-                .HasForeignKey(d => d.TaskId)
-                .HasConstraintName("FK__Documents__TaskI__45F365D3");
         });
 
         modelBuilder.Entity<Project>(entity =>
@@ -208,15 +202,35 @@ public partial class MicrmContext : DbContext
 
         modelBuilder.Entity<Task>(entity =>
         {
-            entity.HasKey(e => e.TaskId).HasName("PK__Task__7C6949B1007052B8");
+            entity.HasKey(e => e.Id).HasName("PK__Tasks__3214EC074B2066B0");
 
-            entity.ToTable("Task");
+            entity.Property(e => e.EndDate).HasColumnType("datetime");
+            entity.Property(e => e.StartDate).HasColumnType("datetime");
+            entity.Property(e => e.Title).HasMaxLength(200);
 
-            entity.Property(e => e.DeliverableType).HasMaxLength(100);
+            entity.HasOne(d => d.ActivityType).WithMany(p => p.Tasks)
+                .HasForeignKey(d => d.ActivityTypeId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__Tasks__ActivityT__56E8E7AB");
 
             entity.HasOne(d => d.Project).WithMany(p => p.Tasks)
                 .HasForeignKey(d => d.ProjectId)
-                .HasConstraintName("FK__Task__ProjectId__4D94879B");
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__Tasks__ProjectId__55F4C372");
+
+            entity.HasOne(d => d.Status).WithMany(p => p.Tasks)
+                .HasForeignKey(d => d.StatusId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__Tasks__StatusId__57DD0BE4");
+        });
+
+        modelBuilder.Entity<TaskStatus>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__TaskStat__3214EC074D2E8679");
+
+            entity.Property(e => e.Color).HasMaxLength(50);
+            entity.Property(e => e.Description).HasMaxLength(255);
+            entity.Property(e => e.Name).HasMaxLength(100);
         });
 
         modelBuilder.Entity<TasksNew>(entity =>
@@ -236,12 +250,17 @@ public partial class MicrmContext : DbContext
         {
             entity.HasKey(e => e.UserId).HasName("PK__Users__1788CC4C1CD36A72");
 
+            entity.Property(e => e.CreatedOn).HasColumnType("datetime");
             entity.Property(e => e.Email).HasMaxLength(100);
             entity.Property(e => e.Name).HasMaxLength(100);
+            entity.Property(e => e.Password)
+                .HasMaxLength(512)
+                .IsUnicode(false);
 
             entity.HasOne(d => d.Role).WithMany(p => p.Users)
                 .HasForeignKey(d => d.RoleId)
-                .HasConstraintName("FK__Users__RoleId__4E88ABD4");
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Users_Roles");
         });
 
         OnModelCreatingPartial(modelBuilder);

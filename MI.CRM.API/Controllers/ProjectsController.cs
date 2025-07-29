@@ -106,6 +106,70 @@ namespace MI.CRM.API.Controllers
             return Ok(entries);
         }
 
+        [HttpPost]
+        [Route("Overview")]
+        public async Task<IActionResult> GetProjectOverview([FromBody] OverviewRequestDto req)
+        {
+            OverviewResponseDto res = new OverviewResponseDto();
+
+            if (req.ProjectId <= 0)
+            {
+                return BadRequest("Invalid project ID.");
+            }
+
+            var project = await _context.Projects
+                .Include(p => p.Tasks)
+                .FirstOrDefaultAsync(p => p.ProjectId == req.ProjectId);
+
+            if (project == null) 
+            {
+                return NotFound("Project not found.");
+            }
+            
+            res.ProjectId = project.ProjectId;
+            res.ActiveTasks = project.Tasks.Count(t => t.StatusId != 3);
+            res.UpcomingTasks = project.Tasks.Count(t => t.StartDate >= DateTime.Now && t.StartDate <= req.WeekEndDate);
+            res.PendingTasks = project.Tasks.Count(t => t.StatusId == 1);
+
+            if(project.TotalApprovedBudget > 0)
+            {
+                res.BudgetPercentageUsed = (int)((double)project.TotalDisbursedBudget / project.TotalApprovedBudget * 100);
+            }
+            else
+            {
+                res.BudgetPercentageUsed = 0;
+            }
+
+            res.ToDoTasks = project.Tasks.Count(t => t.StatusId == 1);
+            res.RemainingTasks = project.Tasks.Count(t => t.StatusId != 3);
+            res.CompletedTasks = project.Tasks.Count(t => t.StatusId == 3);
+
+            res.ProgressPercentage = project.Tasks.Count == 0 ? 0 : (int)((double)res.CompletedTasks / project.Tasks.Count * 100);
+            res.Notifications = project.Tasks
+            .Where(t => t.StartDate >= DateTime.Now && t.StartDate <= req.WeekEndDate)
+            .Select(t =>
+            {
+                DateTime startDate = (DateTime)t.StartDate;
+                return new TaskNotificationDto
+                {
+                    Title = t.Title,
+                    ScheduledDate = startDate,
+                    TimeRemaining = (t.StartDate.Value.Date - DateTime.Now.Date).Days > 0
+                                    ? $"{(t.StartDate.Value.Date - DateTime.Now.Date).Days} days"
+                                    : "Due today"
+                };
+            })
+            .ToList();
+
+
+            return Ok(res);
+
+
+
+        }
+
+
+
 
     }
 }
