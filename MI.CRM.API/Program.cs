@@ -1,5 +1,8 @@
 using MI.CRM.API.Models;
 using Microsoft.EntityFrameworkCore;
+using MI.CRM.API.Data;
+using MI.CRM.API.Mapping;
+using MI.CRM.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,9 +10,14 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
-builder.Services.AddDbContext<MicrmContext>(options =>
+//builder.Services.AddDbContext<MicrmContext>(options =>
+//    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddScoped(typeof(IBaseService<>), typeof(BaseService<>));
+builder.Services.AddScoped<IProjectBudgetEntryService, ProjectBudgetEntryService>();
 
+builder.Services.AddAutoMapper(typeof(MappingProfile));
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
