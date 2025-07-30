@@ -35,6 +35,8 @@ public partial class MicrmContext : DbContext
 
     public virtual DbSet<Task> Tasks { get; set; }
 
+    public virtual DbSet<TaskLog> TaskLogs { get; set; }
+
     public virtual DbSet<TaskStatus> TaskStatuses { get; set; }
 
     public virtual DbSet<TasksNew> TasksNews { get; set; }
@@ -222,6 +224,27 @@ public partial class MicrmContext : DbContext
                 .HasForeignKey(d => d.StatusId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__Tasks__StatusId__57DD0BE4");
+        });
+
+        modelBuilder.Entity<TaskLog>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__TaskLogs__3214EC07B675DD65");
+
+            entity.Property(e => e.ActionTimestamp)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.ActionType).HasMaxLength(50);
+            entity.Property(e => e.FieldChanged).HasMaxLength(100);
+
+            entity.HasOne(d => d.Task).WithMany(p => p.TaskLogs)
+                .HasForeignKey(d => d.TaskId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_TaskLogs_Tasks");
+
+            entity.HasOne(d => d.User).WithMany(p => p.TaskLogs)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_TaskLogs_Users");
         });
 
         modelBuilder.Entity<TaskStatus>(entity =>

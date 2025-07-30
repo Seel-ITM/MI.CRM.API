@@ -28,4 +28,6 @@ public partial class Task
     public virtual Project Project { get; set; } = null!;
 
     public virtual TaskStatus Status { get; set; } = null!;
+
+    public virtual ICollection<TaskLog> TaskLogs { get; set; } = new List<TaskLog>();
 }

@@ -24,4 +24,6 @@ public partial class User
     public virtual Role Role { get; set; } = null!;
 
     public virtual ICollection<SubContractor> SubContractors { get; set; } = new List<SubContractor>();
+
+    public virtual ICollection<TaskLog> TaskLogs { get; set; } = new List<TaskLog>();
 }
