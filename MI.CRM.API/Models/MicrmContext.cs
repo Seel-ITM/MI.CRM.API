@@ -23,6 +23,10 @@ public partial class MicrmContext : DbContext
 
     public virtual DbSet<BudgetType> BudgetTypes { get; set; }
 
+    public virtual DbSet<DisbursementLog> DisbursementLogs { get; set; }
+
+    public virtual DbSet<Document> Documents { get; set; }
+
     public virtual DbSet<Project> Projects { get; set; }
 
     public virtual DbSet<ProjectBudgetEntry> ProjectBudgetEntries { get; set; }
@@ -107,6 +111,62 @@ public partial class MicrmContext : DbContext
             entity.Property(e => e.Name)
                 .HasMaxLength(100)
                 .IsUnicode(false);
+        });
+
+        modelBuilder.Entity<DisbursementLog>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Disburse__3214EC07B4EE032C");
+
+            entity.Property(e => e.CreatedOn)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.DisbursedAmount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.DisbursementDate).HasColumnType("datetime");
+
+            entity.HasOne(d => d.Category).WithMany(p => p.DisbursementLogs)
+                .HasForeignKey(d => d.CategoryId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_DisbursementLogs_Category");
+
+            entity.HasOne(d => d.Document).WithMany(p => p.DisbursementLogs)
+                .HasForeignKey(d => d.DocumentId)
+                .HasConstraintName("FK_DisbursementLogs_Document");
+
+            entity.HasOne(d => d.Project).WithMany(p => p.DisbursementLogs)
+                .HasForeignKey(d => d.ProjectId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_DisbursementLogs_Project");
+
+            entity.HasOne(d => d.User).WithMany(p => p.DisbursementLogs)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_DisbursementLogs_User");
+        });
+
+        modelBuilder.Entity<Document>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Document__3214EC07F9EF621C");
+
+            entity.Property(e => e.DeletedAt).HasColumnType("datetime");
+            entity.Property(e => e.DocumentName).HasMaxLength(255);
+            entity.Property(e => e.DocumentUrl).HasMaxLength(500);
+            entity.Property(e => e.UploadedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.DeletedByNavigation).WithMany(p => p.DocumentDeletedByNavigations)
+                .HasForeignKey(d => d.DeletedBy)
+                .HasConstraintName("FK_Document_DeletedBy_User");
+
+            entity.HasOne(d => d.Project).WithMany(p => p.Documents)
+                .HasForeignKey(d => d.ProjectId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Document_Project");
+
+            entity.HasOne(d => d.UploadedByNavigation).WithMany(p => p.DocumentUploadedByNavigations)
+                .HasForeignKey(d => d.UploadedBy)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Document_UploadedBy_User");
         });
 
         modelBuilder.Entity<Project>(entity =>

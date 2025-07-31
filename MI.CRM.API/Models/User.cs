@@ -19,6 +19,12 @@ public partial class User
 
     public int? CreatedBy { get; set; }
 
+    public virtual ICollection<DisbursementLog> DisbursementLogs { get; set; } = new List<DisbursementLog>();
+
+    public virtual ICollection<Document> DocumentDeletedByNavigations { get; set; } = new List<Document>();
+
+    public virtual ICollection<Document> DocumentUploadedByNavigations { get; set; } = new List<Document>();
+
     public virtual ICollection<ProjectManager> ProjectManagers { get; set; } = new List<ProjectManager>();
 
     public virtual Role Role { get; set; } = null!;

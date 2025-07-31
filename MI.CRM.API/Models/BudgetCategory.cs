@@ -11,5 +11,7 @@ public partial class BudgetCategory
 
     public string? Description { get; set; }
 
+    public virtual ICollection<DisbursementLog> DisbursementLogs { get; set; } = new List<DisbursementLog>();
+
     public virtual ICollection<ProjectBudgetEntry> ProjectBudgetEntries { get; set; } = new List<ProjectBudgetEntry>();
 }

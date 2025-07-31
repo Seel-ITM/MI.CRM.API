@@ -31,6 +31,10 @@ public partial class Project
 
     public virtual ICollection<Budget> Budgets { get; set; } = new List<Budget>();
 
+    public virtual ICollection<DisbursementLog> DisbursementLogs { get; set; } = new List<DisbursementLog>();
+
+    public virtual ICollection<Document> Documents { get; set; } = new List<Document>();
+
     public virtual ICollection<ProjectBudgetEntry> ProjectBudgetEntryAwardNumberNavigations { get; set; } = new List<ProjectBudgetEntry>();
 
     public virtual ICollection<ProjectBudgetEntry> ProjectBudgetEntryProjects { get; set; } = new List<ProjectBudgetEntry>();

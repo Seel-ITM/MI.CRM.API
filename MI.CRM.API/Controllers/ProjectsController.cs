@@ -106,6 +106,38 @@ namespace MI.CRM.API.Controllers
             return Ok(entries);
         }
 
+        [HttpGet("ProjectBudgetEntriesByCategory/{projectId}/{categoryId}")]
+        public async Task<IActionResult> GetProjectBudgetEntriesByCategory(int projectId, int categoryId)
+        {
+            if(projectId <= 0 || categoryId <= 0)
+            {
+                return BadRequest("Invalid project ID or category ID.");
+            }
+
+            var entries = await _context.ProjectBudgetEntries
+                .Where(e => e.ProjectId == projectId && e.CategoryId == categoryId)
+                .Include(e => e.Category)
+                .Include(e => e.Type)
+                .OrderBy(e => e.CategoryId)
+                .ThenBy(e => e.TypeId)
+                .Select(e => new ProjectBudgetEntryDto
+                {
+                    Id = e.Id,
+                    ProjectId = e.ProjectId,
+                    AwardNumber = e.AwardNumber,
+                    CategoryId = e.CategoryId,
+                    CategoryName = e.Category.Name,
+                    TypeId = e.TypeId,
+                    TypeName = e.Type.Name,
+                    Amount = e.Amount,
+                    Notes = e.Notes
+                })
+                .ToListAsync();
+
+            return Ok(entries);
+        }
+
+
         [HttpPost]
         [Route("Overview")]
         public async Task<IActionResult> GetProjectOverview([FromBody] OverviewRequestDto req)
