@@ -23,11 +23,11 @@ public partial class Project
 
     public int? SubContractorId { get; set; }
 
-    public int? TotalApprovedBudget { get; set; }
+    public decimal? TotalApprovedBudget { get; set; }
 
-    public int? TotalDisbursedBudget { get; set; }
+    public decimal? TotalDisbursedBudget { get; set; }
 
-    public int? TotalRemainingBudget { get; set; }
+    public decimal? TotalRemainingBudget { get; set; }
 
     public virtual ICollection<Budget> Budgets { get; set; } = new List<Budget>();
 

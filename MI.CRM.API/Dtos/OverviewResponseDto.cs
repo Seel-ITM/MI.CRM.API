@@ -22,4 +22,9 @@
         public DateTime ScheduledDate { get; set; }
         public string TimeRemaining { get; set; } = string.Empty;
     }
+
+    public class RecentUpdatesDto
+    {
+
+    }
 }

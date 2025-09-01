@@ -11,9 +11,9 @@
         public string State { get; set; } = null!;
         public int? ProjectManagerId { get; set; }
         public int? SubContractorId { get; set; }
-        public int? TotalApprovedBudget { get; set; }
-        public int? TotalDisbursedBudget { get; set; }
-        public int? TotalRemainingBudget { get; set; }
+        public decimal? TotalApprovedBudget { get; set; }
+        public decimal? TotalDisbursedBudget { get; set; }
+        public decimal? TotalRemainingBudget { get; set; }
     }
 
 }

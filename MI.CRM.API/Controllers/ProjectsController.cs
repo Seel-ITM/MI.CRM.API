@@ -1,13 +1,16 @@
 ﻿using MI.CRM.API.Dtos;
 using MI.CRM.API.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace MI.CRM.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class ProjectsController : ControllerBase
     {
         private readonly MicrmContext _context;
@@ -18,9 +21,23 @@ namespace MI.CRM.API.Controllers
 
         [HttpGet]
         [Route("GetAll")]
-        public IActionResult GetAll()
+        public async Task<IActionResult> GetAll()
         {
-            var projects = _context.Projects.ToList();
+            var projects = await _context.Projects.AsNoTracking().Select(project => new ProjectDto
+            {
+                ProjectId = project.ProjectId,
+                AwardNumber = project.AwardNumber,
+                Title = project.Title,
+                Category = project.Category,
+                Agency = project.Agency,
+                Company = project.Company,
+                State = project.State,
+                ProjectManagerId = project.ProjectManagerId,
+                SubContractorId = project.SubContractorId,
+                TotalApprovedBudget = project.TotalApprovedBudget,
+                TotalDisbursedBudget = project.TotalDisbursedBudget,
+                TotalRemainingBudget = project.TotalRemainingBudget
+            }).ToListAsync();
             return Ok(projects);
         }
 
@@ -165,7 +182,7 @@ namespace MI.CRM.API.Controllers
 
             if(project.TotalApprovedBudget > 0)
             {
-                res.BudgetPercentageUsed = (int)((double)project.TotalDisbursedBudget / project.TotalApprovedBudget * 100);
+                res.BudgetPercentageUsed = (int)(project.TotalDisbursedBudget.GetValueOrDefault() / project.TotalApprovedBudget.GetValueOrDefault() * 100);
             }
             else
             {
@@ -198,6 +215,92 @@ namespace MI.CRM.API.Controllers
 
 
 
+        }
+
+        [HttpPost("Create")]
+        public async Task<IActionResult> CreateProject([FromBody] CreateProjectDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var subContractor = new SubContractor
+            {
+                Name = dto.SubcontractorDetails.SubcontractorName,
+                Email = dto.SubcontractorDetails.Email,
+            };
+
+            _context.SubContractors.Add(subContractor);
+            await _context.SaveChangesAsync(); // This will populate subContractor.Id
+
+            var currentUserId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : throw new UnauthorizedAccessException("User ID not found in token"); // Replace with actual logged-in user id if available;
+            var subcontractorId = subContractor.SubContractorId;
+            int? projectMangerId = _context.ProjectManagers.Where(pm => pm.UserId == currentUserId).Select(pm => pm.ProjectManagerId).FirstOrDefault();
+            var project = new Project
+            {
+                AwardNumber = dto.ProjectDetails.AwardNumber,
+                Title = dto.ProjectDetails.Title,
+                Category = dto.ProjectDetails.Category,
+                Agency = dto.ProjectDetails.Agency,
+                Company = dto.ProjectDetails.Company,
+                State = dto.ProjectDetails.State,
+                ProjectManagerId = projectMangerId,
+                SubContractorId = subcontractorId,
+            };
+
+            _context.Projects.Add(project);
+            await _context.SaveChangesAsync(); // This will populate project.ProjectId
+
+            // Create budget entries
+            decimal totalApprovedBudget = 0;
+            foreach (var entry in dto.ProjectBudgetInfo)
+            {
+                if (entry.ApprovedAmount <= 0)
+                {
+                    return BadRequest("Approved amount must be greater than zero.");
+                }
+                totalApprovedBudget += entry.ApprovedAmount;
+                var approvedBudgetEntry = new ProjectBudgetEntry
+                {
+                    ProjectId = project.ProjectId,
+                    AwardNumber = project.AwardNumber,
+                    CategoryId = entry.CategoryId,
+                    TypeId = 1,
+                    Amount = entry.ApprovedAmount,
+                };
+                _context.ProjectBudgetEntries.Add(approvedBudgetEntry);
+
+                var disbursedBudgetEntry = new ProjectBudgetEntry
+                {
+                    ProjectId = project.ProjectId,
+                    AwardNumber = project.AwardNumber,
+                    CategoryId = entry.CategoryId,
+                    TypeId = 2,
+                    Amount = 0, // Initially zero
+                };
+                _context.ProjectBudgetEntries.Add(disbursedBudgetEntry);
+                var remainingBudgetEntry = new ProjectBudgetEntry
+                {
+                    ProjectId = project.ProjectId,
+                    AwardNumber = project.AwardNumber,
+                    CategoryId = entry.CategoryId,
+                    TypeId = 3,
+                    Amount = entry.ApprovedAmount, // Initially equal to approved amount
+                };
+                _context.ProjectBudgetEntries.Add(remainingBudgetEntry);
+            }
+
+            project.TotalApprovedBudget = totalApprovedBudget;
+            project.TotalDisbursedBudget = 0;
+            project.TotalRemainingBudget = totalApprovedBudget;
+
+            _context.Projects.Update(project);
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                message = "Project created successfully",
+                projectId = project.ProjectId
+            });
         }
 
 

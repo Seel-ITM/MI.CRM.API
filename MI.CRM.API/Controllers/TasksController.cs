@@ -1,13 +1,16 @@
 ﻿using MI.CRM.API.Dtos;
 using MI.CRM.API.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace MI.CRM.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class TasksController : ControllerBase
     {
         private readonly MicrmContext _context;
@@ -110,12 +113,12 @@ namespace MI.CRM.API.Controllers
                 logs.Add(new TaskLog
                 {
                     TaskId = task.Id,
-                    UserId = 3, // Replace with actual logged-in user id if available
+                    UserId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : throw new UnauthorizedAccessException("User ID not found in token"), // Replace with actual logged-in user id if available
                     ActionType = "DateTime Updated",
                     FieldChanged = "StartDate",
                     OldValue = task.StartDate.ToString(),
                     NewValue = dto.StartDateTime.ToString(),
-                    ActionTimestamp = DateTime.UtcNow
+                    ActionTimestamp = DateTime.UtcNow   
                 });
 
                 task.StartDate = dto.StartDateTime;
@@ -126,7 +129,7 @@ namespace MI.CRM.API.Controllers
                 logs.Add(new TaskLog
                 {
                     TaskId = task.Id,
-                    UserId = 3, // Replace with actual logged-in user id if available
+                    UserId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : throw new UnauthorizedAccessException("User ID not found in token"), // Replace with actual logged-in user id if available
                     ActionType = "DateTime Updated",
                     FieldChanged = "EndDate",
                     OldValue = task.EndDate.ToString(),
@@ -136,6 +139,7 @@ namespace MI.CRM.API.Controllers
 
                 task.EndDate = dto.EndDateTime;
             }
+
 
             if (logs.Any())
                 _context.TaskLogs.AddRange(logs);

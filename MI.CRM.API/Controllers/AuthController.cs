@@ -76,6 +76,17 @@ namespace MI.CRM.API.Controllers
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
+            int projectMangerRoleId = 1002; // Assuming 1002 is the Project Manager role ID
+            if (user.RoleId == projectMangerRoleId)
+            {
+                _context.ProjectManagers.Add(new ProjectManager
+                {
+                    UserId = user.UserId,
+                });
+
+                await _context.SaveChangesAsync();
+            }
+
             return Ok(new { message = "User registered successfully" });
 
         }

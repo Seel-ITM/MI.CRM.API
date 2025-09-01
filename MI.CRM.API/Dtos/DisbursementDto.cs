@@ -10,6 +10,7 @@
     }
 
     public class NewDisbursementDto : DisbursementDto{
+        public int BudgetEntryId { get; set; }
         public int? DocumentId { get; set; }
     }
 

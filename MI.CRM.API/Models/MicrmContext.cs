@@ -181,6 +181,9 @@ public partial class MicrmContext : DbContext
             entity.Property(e => e.Company).HasMaxLength(100);
             entity.Property(e => e.State).HasMaxLength(100);
             entity.Property(e => e.Title).HasMaxLength(200);
+            entity.Property(e => e.TotalApprovedBudget).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.TotalDisbursedBudget).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.TotalRemainingBudget).HasColumnType("decimal(18, 2)");
 
             entity.HasOne(d => d.ProjectManager).WithMany(p => p.Projects)
                 .HasForeignKey(d => d.ProjectManagerId)
@@ -231,10 +234,6 @@ public partial class MicrmContext : DbContext
 
             entity.ToTable("ProjectManager");
 
-            entity.HasOne(d => d.Role).WithMany(p => p.ProjectManagers)
-                .HasForeignKey(d => d.RoleId)
-                .HasConstraintName("FK__ProjectMa__RoleI__49C3F6B7");
-
             entity.HasOne(d => d.User).WithMany(p => p.ProjectManagers)
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("FK__ProjectMa__UserI__4AB81AF0");
@@ -253,13 +252,8 @@ public partial class MicrmContext : DbContext
 
             entity.ToTable("SubContractor");
 
-            entity.HasOne(d => d.Role).WithMany(p => p.SubContractors)
-                .HasForeignKey(d => d.RoleId)
-                .HasConstraintName("FK__SubContra__RoleI__4BAC3F29");
-
-            entity.HasOne(d => d.User).WithMany(p => p.SubContractors)
-                .HasForeignKey(d => d.UserId)
-                .HasConstraintName("FK__SubContra__UserI__4CA06362");
+            entity.Property(e => e.Email).HasMaxLength(100);
+            entity.Property(e => e.Name).HasMaxLength(100);
         });
 
         modelBuilder.Entity<Task>(entity =>
