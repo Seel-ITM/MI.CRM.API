@@ -10,10 +10,11 @@ namespace MI.CRM.API.Controllers
     public class TestController : ControllerBase
     {
         private readonly MicrmContext _context;
-
-        public TestController(MicrmContext context)
+        private readonly IConfiguration _configuration;
+        public TestController(MicrmContext context, IConfiguration configuration)
         {
             _context = context;
+            _configuration = configuration;
         }
 
         // 1. Simple ping endpoint
@@ -55,6 +56,20 @@ namespace MI.CRM.API.Controllers
             {
                 return StatusCode(500, new { message = "Failed to get connection string", error = ex.Message });
             }
+        }
+
+        
+        [HttpGet("show-conn")]
+        [AllowAnonymous]
+        public IActionResult ShowConn()
+        {
+            return Ok(new
+            {
+                FromGetConnectionString = _configuration.GetConnectionString("DefaultConnection"),
+                FromConfigDirect = _configuration["ConnectionStrings:DefaultConnection"],
+                FromEnvVar = Environment.GetEnvironmentVariable("DefaultConnection"),
+                AspNetCoreEnv = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
+            });
         }
     }
 }
