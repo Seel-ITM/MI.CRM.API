@@ -21,6 +21,7 @@ namespace MI.CRM.API.Controllers
 
         [HttpGet]
         [Route("GetAll")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetAll()
         {
             var projects = await _context.Projects.AsNoTracking().Select(project => new ProjectDto
