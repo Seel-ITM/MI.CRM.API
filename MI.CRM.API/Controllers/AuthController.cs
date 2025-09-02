@@ -1,6 +1,7 @@
 ﻿using Isopoh.Cryptography.Argon2;
 using MI.CRM.API.Dtos;
 using MI.CRM.API.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +16,7 @@ namespace MI.CRM.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [AllowAnonymous]
     public class AuthController : ControllerBase
     {
         private readonly MicrmContext _context;
