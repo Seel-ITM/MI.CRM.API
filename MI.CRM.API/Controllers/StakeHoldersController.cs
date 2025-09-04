@@ -60,5 +60,54 @@ namespace MI.CRM.API.Controllers
 
             return Ok(stakeholders);
         }
+
+        [HttpGet("GetByProject/{projectId}")]
+        public async Task<IActionResult> GetStakeHoldersByProject(int projectId)
+        {
+            var project = await _context.Projects
+                .Include(p => p.ProjectManager)
+                    .ThenInclude(pm => pm.User)
+                .Include(p => p.SubContractor)
+                .FirstOrDefaultAsync(p => p.ProjectId == projectId);
+
+            if (project == null)
+            {
+                return NotFound(new { Message = "Project not found" });
+            }
+
+            var stakeholders = new List<StakeHolderDto>();
+
+            // Add Project Manager if exists
+            if (project.ProjectManager != null)
+            {
+                stakeholders.Add(new StakeHolderDto
+                {
+                    ProjectManageer = new ProjectMangerDto
+                    {
+                        Id = project.ProjectManager.ProjectManagerId,
+                        UserId = project.ProjectManager.User?.UserId,
+                        Name = project.ProjectManager.User?.Name,
+                        Email = project.ProjectManager.User?.Email,
+                    }
+                });
+            }
+
+            // Add SubContractor if exists
+            if (project.SubContractor != null)
+            {
+                stakeholders.Add(new StakeHolderDto
+                {
+                    Subcontractor = new SubcontractorDto
+                    {
+                        Id = project.SubContractor.SubContractorId,
+                        Name = project.SubContractor.Name,
+                        Email = project.SubContractor.Email,
+                    }
+                });
+            }
+
+            return Ok(stakeholders);
+        }
+
     }
 }
