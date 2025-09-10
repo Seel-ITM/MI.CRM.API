@@ -49,10 +49,10 @@ namespace MI.CRM.API.Controllers
             {
                 Type = Argon2Type.HybridAddressing,
                 Version = Argon2Version.Nineteen,
-                TimeCost = 4,             // Iterations
-                MemoryCost = 1 << 16,     // 64 MB
-                Lanes = 4,
-                Threads = Environment.ProcessorCount,
+                TimeCost = 2,             // Iterations
+                MemoryCost = 1 << 15,     // 32 MB
+                Lanes = 1,
+                Threads = 1,
                 Salt = salt,
                 HashLength = 32,
                 Password = System.Text.Encoding.UTF8.GetBytes(password),
