@@ -29,6 +29,16 @@ public partial class Project
 
     public decimal? TotalRemainingBudget { get; set; }
 
+    public decimal? BilledNotPaid { get; set; }
+
+    public string? Status { get; set; }
+
+    public DateTime? StartDate { get; set; }
+
+    public DateTime? EndDate { get; set; }
+
+    public string? ProjectStatus { get; set; }
+
     public virtual ICollection<Budget> Budgets { get; set; } = new List<Budget>();
 
     public virtual ICollection<DisbursementLog> DisbursementLogs { get; set; } = new List<DisbursementLog>();

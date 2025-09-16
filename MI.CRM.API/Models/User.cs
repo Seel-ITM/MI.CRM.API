@@ -29,5 +29,9 @@ public partial class User
 
     public virtual Role Role { get; set; } = null!;
 
+    public virtual ICollection<Task> TaskAssignedToNavigations { get; set; } = new List<Task>();
+
+    public virtual ICollection<Task> TaskCompletedByNavigations { get; set; } = new List<Task>();
+
     public virtual ICollection<TaskLog> TaskLogs { get; set; } = new List<TaskLog>();
 }

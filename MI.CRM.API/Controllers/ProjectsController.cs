@@ -35,9 +35,15 @@ namespace MI.CRM.API.Controllers
                 State = project.State,
                 ProjectManagerId = project.ProjectManagerId,
                 SubContractorId = project.SubContractorId,
+                SubContractorName = project.SubContractor != null ? project.SubContractor.Name : string.Empty,
                 TotalApprovedBudget = project.TotalApprovedBudget,
                 TotalDisbursedBudget = project.TotalDisbursedBudget,
-                TotalRemainingBudget = project.TotalRemainingBudget
+                TotalRemainingBudget = project.TotalRemainingBudget,
+                Status = project.Status,
+                StartDate = project.StartDate,
+                EndDate = project.EndDate,
+                BilledNotPaid = project.BilledNotPaid,
+                ProjectStatus = project.ProjectStatus
             }).ToListAsync();
             return Ok(projects);
         }
@@ -61,9 +67,15 @@ namespace MI.CRM.API.Controllers
                 State = project.State,
                 ProjectManagerId = project.ProjectManagerId,
                 SubContractorId = project.SubContractorId,
+                SubContractorName = project.SubContractor != null ? project.SubContractor.Name : string.Empty,
                 TotalApprovedBudget = project.TotalApprovedBudget,
                 TotalDisbursedBudget = project.TotalDisbursedBudget,
-                TotalRemainingBudget = project.TotalRemainingBudget
+                TotalRemainingBudget = project.TotalRemainingBudget,
+                Status = project.Status,
+                StartDate = project.StartDate,
+                EndDate = project.EndDate,
+                BilledNotPaid = project.BilledNotPaid,
+                ProjectStatus = project.ProjectStatus
             };
 
             return Ok(dto);
@@ -87,9 +99,16 @@ namespace MI.CRM.API.Controllers
                 State = project.State,
                 ProjectManagerId = project.ProjectManagerId,
                 SubContractorId = project.SubContractorId,
+                SubContractorName = project.SubContractor != null ? project.SubContractor.Name : string.Empty,
                 TotalApprovedBudget = project.TotalApprovedBudget,
                 TotalDisbursedBudget = project.TotalDisbursedBudget,
-                TotalRemainingBudget = project.TotalRemainingBudget
+                TotalRemainingBudget = project.TotalRemainingBudget,
+                Status = project.Status,
+                StartDate = project.StartDate,
+                EndDate = project.EndDate,
+                BilledNotPaid = project.BilledNotPaid,
+                ProjectStatus = project.ProjectStatus
+
             };
             return Ok(dto);
         }
@@ -302,6 +321,134 @@ namespace MI.CRM.API.Controllers
                 message = "Project created successfully",
                 projectId = project.ProjectId
             });
+        }
+
+        [HttpGet("OperationsSummary/{projectId}")]
+        public async Task<IActionResult> GetOperationsSummary(int projectId)
+        {
+            var project = await _context.Projects
+                .Where(p => p.ProjectId == projectId)
+                .Select(p => new ProjectDto
+                {
+                    ProjectId = p.ProjectId,
+                    AwardNumber = p.AwardNumber,
+                    Title = p.Title,
+                    Category = p.Category,
+                    Agency = p.Agency,
+                    Company = p.Company,
+                    State = p.State,
+                    ProjectManagerId = p.ProjectManagerId,
+                    SubContractorId = p.SubContractorId,
+                    SubContractorName = p.SubContractor != null ? p.SubContractor.Name : string.Empty,
+                    TotalApprovedBudget = p.TotalApprovedBudget,
+                    TotalDisbursedBudget = p.TotalDisbursedBudget,
+                    TotalRemainingBudget = p.TotalRemainingBudget,
+                    BilledNotPaid = p.BilledNotPaid,
+                    Status = p.Status,
+                    StartDate = p.StartDate,
+                    EndDate = p.EndDate,
+                    ProjectStatus = p.ProjectStatus
+                })
+                .FirstOrDefaultAsync();
+
+            if (project == null) return NotFound();
+
+            var allTasks = await _context.Tasks
+                .Where(t => t.ProjectId == projectId)
+                .Select(t => new TaskDto
+                {
+                    Id = t.Id,
+                    Title = t.Title,
+                    Description = t.Description,
+                    StartDate = t.StartDate,
+                    EndDate = t.EndDate,
+                    AssignedTo = t.AssignedTo,
+                    AssigneeName = t.AssignedToNavigation != null ? t.AssignedToNavigation.Name : string.Empty,
+                    StatusId = t.StatusId,
+                    StatusName = t.Status.Name,
+                    StatusColor = t.Status.Color,
+                    ActivityTypeId = t.ActivityTypeId,
+                    ActivityTypeName = t.ActivityType.Name,
+                    DeliverableType = t.DeliverableType,
+                    CompletedOn = t.CompletedOn,
+                    CompletedByName = t.CompletedByNavigation != null ? t.CompletedByNavigation.Name : string.Empty,
+                })
+                .ToListAsync();
+
+            var totalTasks = allTasks.Count;
+            var completedTasks = allTasks.Count(t => t.StatusId == 3);
+
+            var deliverableTypes = allTasks
+                .Where(t => !string.IsNullOrEmpty(t.DeliverableType))
+                .Select(t => t.DeliverableType!)
+                .Distinct()
+                .ToList();
+
+            var latestTodoTasks = allTasks
+                .Where(t => t.CreatedOn >= DateTime.UtcNow.AddDays(-7))
+                .OrderByDescending(t => t.CreatedOn)
+                .ToList();
+
+            var latestFinishedTasks = allTasks
+                .Where(t => t.StatusId == 3 && t.CompletedOn >= DateTime.UtcNow.AddDays(-7))
+                .OrderByDescending(t => t.CompletedOn)
+                .ToList();
+
+            var dto = new OperationsSummaryDto
+            {
+                Project = project,
+                TotalNumberOfEvents = totalTasks,
+                BudgetedNumberOfEvents = completedTasks,
+                RemainingNumberOfEvents = totalTasks - completedTasks,
+                DeliverableTypes = deliverableTypes,
+                TasksCompletedPercent = totalTasks == 0 ? 0 : (decimal)completedTasks / totalTasks * 100,
+                LatestTodoTasks = latestTodoTasks,
+                LatestFinishedTasks = latestFinishedTasks,
+                Tasks = allTasks
+            };
+
+            return Ok(dto);
+        }
+
+        [HttpGet("MainPageData")]
+        public async Task<IActionResult> GetMainPageData()
+        {
+            // Get all projects
+            var projectsQuery = _context.Projects;
+
+            var projects = await projectsQuery
+                .Select(p => new ProjectDto
+                {
+                    ProjectId = p.ProjectId,
+                    AwardNumber = p.AwardNumber,
+                    Title = p.Title,
+                    Category = p.Category,
+                    Agency = p.Agency,
+                    Company = p.Company,
+                    State = p.State,
+                    ProjectManagerId = p.ProjectManagerId,
+                    SubContractorId = p.SubContractorId,
+                    SubContractorName = p.SubContractor != null ? p.SubContractor.Name : string.Empty,
+                    TotalApprovedBudget = p.TotalApprovedBudget,
+                    TotalDisbursedBudget = p.TotalDisbursedBudget,
+                    TotalRemainingBudget = p.TotalRemainingBudget,
+                    BilledNotPaid = p.BilledNotPaid,
+                    Status = p.Status,
+                    StartDate = p.StartDate,
+                    EndDate = p.EndDate,
+                    ProjectStatus = p.ProjectStatus
+                })
+                .ToListAsync();
+
+            var dto = new MainPageDataDto
+            {
+                Projects = projects,
+                TotalProjects = projects.Count,
+                States = projects.Select(p => p.State).Distinct().Count(),   // count of unique states
+                TotalApprovedBudget = projects.Sum(p => p.TotalApprovedBudget ?? 0)
+            };
+
+            return Ok(dto);
         }
 
 

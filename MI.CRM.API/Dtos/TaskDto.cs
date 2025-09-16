@@ -14,6 +14,7 @@
 
         public int? AssignedTo { get; set; }
 
+        public string AssigneeName { get; set; }
         public int StatusId { get; set; }
 
         public required string StatusName { get; set; }
@@ -22,6 +23,15 @@
         public int ActivityTypeId { get; set; }
 
         public required string ActivityTypeName { get; set; }
+
+        public string? DeliverableType { get; set; }
+
+        public DateTime? CreatedOn { get; set; }
+
+        public int? CreatedBy { get; set; }
+        public DateTime? CompletedOn { get; set; }
+        public int? CompletedBy { get; set; }
+        public string CompletedByName { get; set; }
     }
 
 }

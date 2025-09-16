@@ -46,13 +46,16 @@ public partial class MicrmContext : DbContext
     public virtual DbSet<TasksNew> TasksNews { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+        => optionsBuilder.UseSqlServer("Server=localhost;Database=mi-crm-14-sep-25;Trusted_Connection=True;Encrypt=False;TrustServerCertificate=True;");
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.UseCollation("SQL_Latin1_General_CP1_CI_AS");
-
         modelBuilder.Entity<ActivityType>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Activity__3214EC07943EA686");
+            entity.HasKey(e => e.Id).HasName("PK__Activity__3214EC07A0C44FD3");
 
             entity.Property(e => e.Description).HasMaxLength(255);
             entity.Property(e => e.Name).HasMaxLength(100);
@@ -84,7 +87,7 @@ public partial class MicrmContext : DbContext
 
         modelBuilder.Entity<BudgetCategory>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__BudgetCa__3214EC079AB80A2E");
+            entity.HasKey(e => e.Id).HasName("PK__BudgetCa__3214EC07C6C19E6A");
 
             entity.Property(e => e.Description)
                 .HasMaxLength(255)
@@ -96,9 +99,9 @@ public partial class MicrmContext : DbContext
 
         modelBuilder.Entity<BudgetType>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__BudgetTy__3214EC071255B2FD");
+            entity.HasKey(e => e.Id).HasName("PK__BudgetTy__3214EC07F56F4EFD");
 
-            entity.HasIndex(e => e.Name, "UQ__BudgetTy__737584F67DE1384C").IsUnique();
+            entity.HasIndex(e => e.Name, "UQ__BudgetTy__737584F6AAFD47D6").IsUnique();
 
             entity.Property(e => e.Description)
                 .HasMaxLength(255)
@@ -140,7 +143,7 @@ public partial class MicrmContext : DbContext
 
         modelBuilder.Entity<Document>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Document__3214EC07F9EF621C");
+            entity.HasKey(e => e.Id).HasName("PK__Document__3214EC077779A5AA");
 
             entity.Property(e => e.DeletedAt).HasColumnType("datetime");
             entity.Property(e => e.DocumentName).HasMaxLength(255);
@@ -172,8 +175,14 @@ public partial class MicrmContext : DbContext
 
             entity.Property(e => e.Agency).HasMaxLength(100);
             entity.Property(e => e.AwardNumber).HasMaxLength(100);
+            entity.Property(e => e.BilledNotPaid).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.Category).HasMaxLength(100);
             entity.Property(e => e.Company).HasMaxLength(100);
+            entity.Property(e => e.EndDate).HasColumnType("datetime");
+            entity.Property(e => e.ProjectStatus)
+                .HasMaxLength(20)
+                .IsUnicode(false);
+            entity.Property(e => e.StartDate).HasColumnType("datetime");
             entity.Property(e => e.State).HasMaxLength(100);
             entity.Property(e => e.Title).HasMaxLength(200);
             entity.Property(e => e.TotalApprovedBudget).HasColumnType("decimal(18, 2)");
@@ -191,7 +200,7 @@ public partial class MicrmContext : DbContext
 
         modelBuilder.Entity<ProjectBudgetEntry>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__ProjectB__3214EC077386FDA3");
+            entity.HasKey(e => e.Id).HasName("PK__ProjectB__3214EC0751C2DD10");
 
             entity.HasIndex(e => new { e.ProjectId, e.CategoryId, e.TypeId }, "UQ_Project_Category_Type").IsUnique();
 
@@ -225,7 +234,7 @@ public partial class MicrmContext : DbContext
 
         modelBuilder.Entity<ProjectManager>(entity =>
         {
-            entity.HasKey(e => e.ProjectManagerId).HasName("PK__ProjectM__35F0311138C32202");
+            entity.HasKey(e => e.ProjectManagerId).HasName("PK__ProjectM__35F03111BACD3BD6");
 
             entity.ToTable("ProjectManager");
 
@@ -236,7 +245,7 @@ public partial class MicrmContext : DbContext
 
         modelBuilder.Entity<Role>(entity =>
         {
-            entity.HasKey(e => e.RoleId).HasName("PK__Roles__8AFACE1AC6192F04");
+            entity.HasKey(e => e.RoleId).HasName("PK__Roles__8AFACE1AACBCFC2B");
 
             entity.Property(e => e.Name).HasMaxLength(100);
         });
@@ -253,8 +262,11 @@ public partial class MicrmContext : DbContext
 
         modelBuilder.Entity<Task>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Tasks__3214EC074B2066B0");
+            entity.HasKey(e => e.Id).HasName("PK__Tasks__3214EC0760E17E66");
 
+            entity.Property(e => e.CompletedOn).HasColumnType("datetime");
+            entity.Property(e => e.CreatedOn).HasColumnType("datetime");
+            entity.Property(e => e.DeliverableType).HasMaxLength(50);
             entity.Property(e => e.EndDate).HasColumnType("datetime");
             entity.Property(e => e.StartDate).HasColumnType("datetime");
             entity.Property(e => e.Title).HasMaxLength(200);
@@ -262,7 +274,15 @@ public partial class MicrmContext : DbContext
             entity.HasOne(d => d.ActivityType).WithMany(p => p.Tasks)
                 .HasForeignKey(d => d.ActivityTypeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Tasks__ActivityT__56E8E7AB");
+                .HasConstraintName("FK__Tasks__ActivityT__6A30C649");
+
+            entity.HasOne(d => d.AssignedToNavigation).WithMany(p => p.TaskAssignedToNavigations)
+                .HasForeignKey(d => d.AssignedTo)
+                .HasConstraintName("FK_Tasks_AssignedTo_Users");
+
+            entity.HasOne(d => d.CompletedByNavigation).WithMany(p => p.TaskCompletedByNavigations)
+                .HasForeignKey(d => d.CompletedBy)
+                .HasConstraintName("FK_Tasks_CompletedBy_Users");
 
             entity.HasOne(d => d.Project).WithMany(p => p.Tasks)
                 .HasForeignKey(d => d.ProjectId)
@@ -272,12 +292,12 @@ public partial class MicrmContext : DbContext
             entity.HasOne(d => d.Status).WithMany(p => p.Tasks)
                 .HasForeignKey(d => d.StatusId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Tasks__StatusId__57DD0BE4");
+                .HasConstraintName("FK__Tasks__StatusId__6C190EBB");
         });
 
         modelBuilder.Entity<TaskLog>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__TaskLogs__3214EC07B675DD65");
+            entity.HasKey(e => e.Id).HasName("PK__TaskLogs__3214EC07212E2EF4");
 
             entity.Property(e => e.ActionTimestamp)
                 .HasDefaultValueSql("(getdate())")
@@ -298,7 +318,7 @@ public partial class MicrmContext : DbContext
 
         modelBuilder.Entity<TaskStatus>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__TaskStat__3214EC074D2E8679");
+            entity.HasKey(e => e.Id).HasName("PK__TaskStat__3214EC07DECA3F48");
 
             entity.Property(e => e.Color).HasMaxLength(50);
             entity.Property(e => e.Description).HasMaxLength(255);
@@ -307,7 +327,7 @@ public partial class MicrmContext : DbContext
 
         modelBuilder.Entity<TasksNew>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Tasks_ne__3214EC0738843018");
+            entity.HasKey(e => e.Id).HasName("PK__Tasks_ne__3214EC07EDCEBD4D");
 
             entity.ToTable("Tasks_new");
 

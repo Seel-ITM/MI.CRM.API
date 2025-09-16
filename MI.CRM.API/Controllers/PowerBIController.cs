@@ -17,7 +17,7 @@ namespace MI.CRM.API.Controllers
         private const string TenantId = "37ae3169-81cc-4188-9546-467067c51719";
         private const string ClientId = "d705371a-2963-4803-92f5-afc9eee1bbd1";
         private const string ClientSecret = "KkY8Q~-e30pqbUzFYdAEs8lqBHu7j9rzOqcl5aMv";
-        private Guid WorkspaceId = new Guid("78551788-f2dc-4ff0-92f9-8b8c6a847cb3"); // Or actual GUID of workspace
+        private Guid WorkspaceId = new Guid("78551788-f2dc-4ff0-92f9-8b8c6a847cb3");
         private Guid ReportId = new Guid("53659efa-e7f0-4086-b079-ff1360207ca3");
 
         private async Task<PowerBIClient> GetPowerBiClient()

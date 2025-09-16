@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.PowerBI.Api.Models;
 using System.Security.Claims;
 
 namespace MI.CRM.API.Controllers
@@ -23,6 +24,13 @@ namespace MI.CRM.API.Controllers
         {
             var users = await _context.Users
                 .Include(u => u.Role)
+                .Select(u => new UserDto
+                {
+                    UserId = u.UserId,
+                    Name = u.Name,
+                    Email = u.Email,
+                    RoleId = u.RoleId,
+                })
                 .ToListAsync();
             return Ok(users);
         }
@@ -30,8 +38,15 @@ namespace MI.CRM.API.Controllers
         public async Task<IActionResult> GetUserById(int id)
         {
             var user = await _context.Users
-                .Include(u => u.Role)
-                .FirstOrDefaultAsync(u => u.UserId == id);
+            .Select(u => new UserDto
+            {
+                UserId = u.UserId,
+                Name = u.Name,
+                Email = u.Email,
+                RoleId = u.RoleId
+            })
+            .FirstOrDefaultAsync(u => u.UserId == id);
+
             if (user == null)
                 return NotFound(new { message = "User not found" });
             return Ok(user);

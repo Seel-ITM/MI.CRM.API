@@ -10,6 +10,7 @@
         public int? AssignedTo { get; set; }
         public int StatusId { get; set; }
         public int ActivityTypeId { get; set; }
+        public string DeliverableType { get; set; }
     }
 
 }
