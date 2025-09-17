@@ -82,6 +82,7 @@ namespace MI.CRM.API.Controllers
                 DisbursementDate = dto.DisbursementDate,
                 DisbursedAmount = dto.DisbursedAmount,
                 DocumentId = dto.DocumentId,
+                ClaimNumber = dto.ClaimNumber,
                 CreatedOn = DateTime.UtcNow,
                 UserId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : throw new UnauthorizedAccessException("User ID not found in token")
                 // TODO: Replace with actual user ID from auth context
@@ -110,5 +111,45 @@ namespace MI.CRM.API.Controllers
             }).ToListAsync();
             return Ok(disbursements);
         }
+
+        [HttpGet("claims/{projectId}")]
+        public async Task<IActionResult> GetClaimsByProjectId(int projectId)
+        {
+            var claims = await _context.DisbursementLogs.AsNoTracking()
+                .Where(d => d.ProjectId == projectId)
+                .Select(d => new ClaimDto
+                {
+                    ProjectId = d.ProjectId,
+                    ClaimNumber = d.ClaimNumber ?? 0, // since it's nullable in entity
+                    DisbursedAmount = d.DisbursedAmount,
+                    Description = d.Description ?? string.Empty,
+                    CategoryId = d.CategoryId,
+                    CategoryName = d.Category.Name, // navigation property
+                    DisbursementDate = d.DisbursementDate
+                })
+                .ToListAsync();
+
+            if (!claims.Any())
+                return NotFound(new { Message = "No claims found for this project." });
+
+            return Ok(claims);
+        }
+
+        [HttpGet("ClaimNumbers/{projectId}")]
+        public async Task<IActionResult> GetClaimNumbersByProjectId(int projectId)
+        {
+            var claimNumbers = await _context.DisbursementLogs.AsNoTracking()
+                .Where(d => d.ProjectId == projectId && d.ClaimNumber.HasValue) // filter only non-null claim numbers
+                .Select(d => d.ClaimNumber.Value) // get the int value
+                .Distinct()
+                .OrderBy(c => c)
+                .ToListAsync();
+
+           
+
+            return Ok(claimNumbers);
+        }
+
+
     }
 }

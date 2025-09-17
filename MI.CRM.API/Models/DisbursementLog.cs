@@ -23,6 +23,8 @@ public partial class DisbursementLog
 
     public DateTime? CreatedOn { get; set; }
 
+    public int? ClaimNumber { get; set; }
+
     public virtual BudgetCategory Category { get; set; } = null!;
 
     public virtual Document? Document { get; set; }
