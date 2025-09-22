@@ -186,7 +186,7 @@ namespace MI.CRM.API.Controllers
                 return BadRequest("Invalid project ID.");
             }
 
-            var project = await _context.Projects
+            var project = await _context.Projects.AsNoTracking()
                 .Include(p => p.Tasks)
                 .FirstOrDefaultAsync(p => p.ProjectId == req.ProjectId);
 
@@ -195,7 +195,27 @@ namespace MI.CRM.API.Controllers
                 return NotFound("Project not found.");
             }
             
-            res.ProjectId = project.ProjectId;
+            res.Project = new ProjectDto {
+                ProjectId = project.ProjectId,
+                AwardNumber = project.AwardNumber,
+                Title = project.Title,
+                Category = project.Category,
+                Agency = project.Agency,
+                Company = project.Company,
+                State = project.State,
+                ProjectManagerId = project.ProjectManagerId,
+                SubContractorId = project.SubContractorId,
+                SubContractorName = project.SubContractor != null ? project.SubContractor.Name : string.Empty,
+                TotalApprovedBudget = project.TotalApprovedBudget,
+                TotalDisbursedBudget = project.TotalDisbursedBudget,
+                TotalRemainingBudget = project.TotalRemainingBudget,
+                Status = project.Status,
+                StartDate = project.StartDate,
+                EndDate = project.EndDate,
+                BilledNotPaid = project.BilledNotPaid,
+                ProjectStatus = project.ProjectStatus
+
+            };
             res.ActiveTasks = project.Tasks.Count(t => t.StatusId != 3);
             res.UpcomingTasks = project.Tasks.Count(t => t.StartDate >= DateTime.Now && t.StartDate <= req.WeekEndDate);
             res.PendingTasks = project.Tasks.Count(t => t.StatusId == 1);
@@ -452,6 +472,42 @@ namespace MI.CRM.API.Controllers
         }
 
 
+        [HttpPut("UpdateProjectStatusDescription")]
+        public async Task<IActionResult> UpdateProjectStatusDescription([FromBody] UpdateProjectStatusDescriptionDto dto)
+        {
+            if (dto == null)
+                return BadRequest("Empty DTO sent.");
+
+            try
+            {
+                var project = await _context.Projects.FindAsync(dto.ProjectId);
+
+                if (project == null)
+                    return NotFound($"Project with ID {dto.ProjectId} not found.");
+
+                if (string.IsNullOrWhiteSpace(dto.Status))
+                    return BadRequest("Status cannot be empty.");
+
+                project.Status = dto.Status;
+
+                _context.Projects.Update(project);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { message = "Project status updated successfully.", project });
+            }
+            catch (DbUpdateException dbEx)
+            {
+                // Database-related issues (constraint, connection, etc.)
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new { message = "Database update failed.", error = dbEx.Message });
+            }
+            catch (Exception ex)
+            {
+                // Catch-all for unexpected issues
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new { message = "An unexpected error occurred.", error = ex.Message });
+            }
+        }
 
 
     }

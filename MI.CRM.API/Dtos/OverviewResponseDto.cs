@@ -2,7 +2,7 @@
 {
     public class OverviewResponseDto
     {
-        public int ProjectId { get; set; }
+        public ProjectDto Project { get; set; }
         public int ActiveTasks { get; set; }
         public int UpcomingTasks { get; set; }
         public int PendingTasks { get; set; }
