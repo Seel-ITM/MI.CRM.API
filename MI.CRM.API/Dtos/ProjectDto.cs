@@ -10,6 +10,7 @@
         public string Company { get; set; } = null!;
         public string State { get; set; } = null!;
         public int? ProjectManagerId { get; set; }
+        public string ProjectManagerName { get; set; }
         public int? SubContractorId { get; set; }
         public string SubContractorName { get; set; }
         public decimal? TotalApprovedBudget { get; set; }

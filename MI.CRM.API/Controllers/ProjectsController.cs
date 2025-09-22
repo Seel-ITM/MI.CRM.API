@@ -187,8 +187,11 @@ namespace MI.CRM.API.Controllers
             }
 
             var project = await _context.Projects.AsNoTracking()
-                .Include(p => p.Tasks)
-                .FirstOrDefaultAsync(p => p.ProjectId == req.ProjectId);
+                                                .Include(p => p.Tasks)
+                                                .Include(p => p.ProjectManager)
+                                                    .ThenInclude(pm => pm.User)
+                                                .Include(p => p.SubContractor)
+                                                .FirstOrDefaultAsync(p => p.ProjectId == req.ProjectId);
 
             if (project == null) 
             {
@@ -206,14 +209,15 @@ namespace MI.CRM.API.Controllers
                 ProjectManagerId = project.ProjectManagerId,
                 SubContractorId = project.SubContractorId,
                 SubContractorName = project.SubContractor != null ? project.SubContractor.Name : string.Empty,
-                TotalApprovedBudget = project.TotalApprovedBudget,
-                TotalDisbursedBudget = project.TotalDisbursedBudget,
-                TotalRemainingBudget = project.TotalRemainingBudget,
-                Status = project.Status,
-                StartDate = project.StartDate,
-                EndDate = project.EndDate,
-                BilledNotPaid = project.BilledNotPaid,
-                ProjectStatus = project.ProjectStatus
+                ProjectManagerName = project?.ProjectManager?.User?.Name ?? string.Empty,
+                TotalApprovedBudget = project?.TotalApprovedBudget,
+                TotalDisbursedBudget = project?.TotalDisbursedBudget,
+                TotalRemainingBudget = project?.TotalRemainingBudget,
+                Status = project?.Status,
+                StartDate = project?.StartDate,
+                EndDate = project?.EndDate,
+                BilledNotPaid = project?.BilledNotPaid,
+                ProjectStatus = project?.ProjectStatus
 
             };
             res.ActiveTasks = project.Tasks.Count(t => t.StatusId != 3);
@@ -249,7 +253,6 @@ namespace MI.CRM.API.Controllers
                 };
             })
             .ToList();
-
 
             return Ok(res);
 
