@@ -15,6 +15,9 @@
         public string Agency { get; set; }
         public string Company { get; set; }
         public string State { get; set; }
+        public string ProjectStatus { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
     }
 
     public class SubcontractorDetailsDto

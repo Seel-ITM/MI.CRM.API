@@ -288,6 +288,9 @@ namespace MI.CRM.API.Controllers
                 State = dto.ProjectDetails.State,
                 ProjectManagerId = projectMangerId,
                 SubContractorId = subcontractorId,
+                ProjectStatus = dto.ProjectDetails.ProjectStatus,
+                StartDate = dto.ProjectDetails.StartDate,
+                EndDate = dto.ProjectDetails.EndDate
             };
 
             _context.Projects.Add(project);
