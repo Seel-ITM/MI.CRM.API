@@ -115,6 +115,8 @@ public partial class MicrmContext : DbContext
                 .HasColumnType("datetime");
             entity.Property(e => e.DisbursedAmount).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.DisbursementDate).HasColumnType("datetime");
+            entity.Property(e => e.Rate).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Units).HasColumnType("decimal(18, 2)");
 
             entity.HasOne(d => d.Category).WithMany(p => p.DisbursementLogs)
                 .HasForeignKey(d => d.CategoryId)

@@ -84,8 +84,9 @@ namespace MI.CRM.API.Controllers
                 DocumentId = dto.DocumentId,
                 ClaimNumber = dto.ClaimNumber,
                 CreatedOn = DateTime.UtcNow,
-                UserId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : throw new UnauthorizedAccessException("User ID not found in token")
-                // TODO: Replace with actual user ID from auth context
+                UserId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : throw new UnauthorizedAccessException("User ID not found in token"),
+                Units = dto.Units,
+                Rate = dto.Rate
             });
 
             await _context.SaveChangesAsync();

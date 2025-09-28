@@ -25,6 +25,10 @@ public partial class DisbursementLog
 
     public int? ClaimNumber { get; set; }
 
+    public decimal? Units { get; set; }
+
+    public decimal? Rate { get; set; }
+
     public virtual BudgetCategory Category { get; set; } = null!;
 
     public virtual Document? Document { get; set; }

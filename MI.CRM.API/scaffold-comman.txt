@@ -1,1 +1,1 @@
-Scaffold-DbContext "Server=localhost;Database=micrm-back;Trusted_Connection=True;Encrypt=False;TrustServerCertificate=True;" Microsoft.EntityFrameworkCore.SqlServer -OutputDir Models -Context MicrmContext -f
+Scaffold-DbContext "Server=localhost;Database=mi-crm-14-sep-25;Trusted_Connection=True;Encrypt=False;TrustServerCertificate=True;" Microsoft.EntityFrameworkCore.SqlServer -OutputDir Models -Context MicrmContext -f

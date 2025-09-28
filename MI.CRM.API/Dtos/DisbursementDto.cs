@@ -7,6 +7,8 @@
         public string? Description { get; set; }
         public DateTime DisbursementDate { get; set; }
         public decimal DisbursedAmount { get; set; }
+        public decimal? Units { get; set; }
+        public decimal? Rate { get; set; }
     }
 
     public class NewDisbursementDto : DisbursementDto{
