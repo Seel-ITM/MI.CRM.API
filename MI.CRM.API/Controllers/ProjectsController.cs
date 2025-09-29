@@ -300,9 +300,9 @@ namespace MI.CRM.API.Controllers
             decimal totalApprovedBudget = 0;
             foreach (var entry in dto.ProjectBudgetInfo)
             {
-                if (entry.ApprovedAmount <= 0)
+                if (entry.ApprovedAmount < 0)
                 {
-                    return BadRequest("Approved amount must be greater than zero.");
+                    return BadRequest("Approved amount must be greater than or equal to zero.");
                 }
                 totalApprovedBudget += entry.ApprovedAmount;
                 var approvedBudgetEntry = new ProjectBudgetEntry
