@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using System.Text.Json;
 
 namespace MI.CRM.API.Controllers
 {
@@ -514,6 +515,133 @@ namespace MI.CRM.API.Controllers
                     new { message = "An unexpected error occurred.", error = ex.Message });
             }
         }
+
+        [HttpPut("OverviewEdit")]
+        public async Task<IActionResult> OverviewEdit([FromBody] OverviewEditDto dto)
+        {
+            var project = await _context.Projects.FindAsync(dto.ProjectId);
+
+            if (project is null)
+            {
+                return NotFound(new { message = "Project not found" });
+            }
+
+            switch (dto.Field)
+            {
+                case "title":
+                    if (dto.Value.ValueKind == JsonValueKind.String)
+                    {
+                        string newTitle = dto.Value.GetString() ?? string.Empty;
+                        await _context.Projects
+                            .Where(p => p.ProjectId == dto.ProjectId)
+                            .ExecuteUpdateAsync(p => p.SetProperty(x => x.Title, newTitle));
+                    }
+                    break;
+
+                case "awardNumber":
+                    if (dto.Value.ValueKind == JsonValueKind.String)
+                    {
+                        string strAward = dto.Value.GetString() ?? string.Empty;
+
+                        // update child first
+                        await _context.ProjectBudgetEntries
+                            .Where(pbe => pbe.ProjectId == dto.ProjectId)
+                            .ExecuteUpdateAsync(pbe => pbe.SetProperty(p => p.AwardNumber, strAward));
+
+                        // then update parent
+                        await _context.Projects
+                            .Where(p => p.ProjectId == dto.ProjectId)
+                            .ExecuteUpdateAsync(p => p.SetProperty(p => p.AwardNumber, strAward));
+                    }
+                    break;
+
+                case "category":
+                    if (dto.Value.ValueKind == JsonValueKind.String)
+                    {
+                        string newCategory = dto.Value.GetString() ?? string.Empty;
+                        await _context.Projects
+                            .Where(p => p.ProjectId == dto.ProjectId)
+                            .ExecuteUpdateAsync(p => p.SetProperty(x => x.Category, newCategory));
+                    }
+                    break;
+
+                case "agency":
+                    if (dto.Value.ValueKind == JsonValueKind.String)
+                    {
+                        string newAgency = dto.Value.GetString() ?? string.Empty;
+                        await _context.Projects
+                            .Where(p => p.ProjectId == dto.ProjectId)
+                            .ExecuteUpdateAsync(p => p.SetProperty(x => x.Agency, newAgency));
+                    }
+                    break;
+
+                case "company":
+                    if (dto.Value.ValueKind == JsonValueKind.String)
+                    {
+                        string newCompany = dto.Value.GetString() ?? string.Empty;
+                        await _context.Projects
+                            .Where(p => p.ProjectId == dto.ProjectId)
+                            .ExecuteUpdateAsync(p => p.SetProperty(x => x.Company, newCompany));
+                    }
+                    break;
+
+                case "state":
+                    if (dto.Value.ValueKind == JsonValueKind.String)
+                    {
+                        string newState = dto.Value.GetString() ?? string.Empty;
+                        await _context.Projects
+                            .Where(p => p.ProjectId == dto.ProjectId)
+                            .ExecuteUpdateAsync(p => p.SetProperty(x => x.State, newState));
+                    }
+                    break;
+
+                case "status":
+                    if (dto.Value.ValueKind == JsonValueKind.String)
+                    {
+                        string newStatus = dto.Value.GetString() ?? string.Empty;
+                        await _context.Projects
+                            .Where(p => p.ProjectId == dto.ProjectId)
+                            .ExecuteUpdateAsync(p => p.SetProperty(x => x.Status, newStatus));
+                    }
+                    break;
+                case "startDate":
+                    if (dto.Value.ValueKind == JsonValueKind.String &&
+                        DateTime.TryParse(dto.Value.GetString(), out var startDate))
+                    {
+                        await _context.Projects
+                            .Where(p => p.ProjectId == dto.ProjectId)
+                            .ExecuteUpdateAsync(p => p.SetProperty(x => x.StartDate, startDate));
+                    }
+                    break;
+
+                case "endDate":
+                    if (dto.Value.ValueKind == JsonValueKind.String &&
+                        DateTime.TryParse(dto.Value.GetString(), out var endDate))
+                    {
+                        await _context.Projects
+                            .Where(p => p.ProjectId == dto.ProjectId)
+                            .ExecuteUpdateAsync(p => p.SetProperty(x => x.EndDate, endDate));
+                    }
+                    break;
+                case "projectStatus":
+                    if (dto.Value.ValueKind == JsonValueKind.String)
+                    {
+                        string status = dto.Value.GetString() ?? string.Empty;
+
+                        await _context.Projects
+                            .Where(p => p.ProjectId == dto.ProjectId)
+                            .ExecuteUpdateAsync(p => p.SetProperty(x => x.ProjectStatus, status));
+                    }
+                    break;
+
+
+                default:
+                    return BadRequest(new { message = $"Unknown field: {dto.Field}" });
+            }
+
+            return Ok(new { message = "Done" });
+        }
+
 
 
     }

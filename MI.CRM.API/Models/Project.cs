@@ -45,9 +45,7 @@ public partial class Project
 
     public virtual ICollection<Document> Documents { get; set; } = new List<Document>();
 
-    public virtual ICollection<ProjectBudgetEntry> ProjectBudgetEntryAwardNumberNavigations { get; set; } = new List<ProjectBudgetEntry>();
-
-    public virtual ICollection<ProjectBudgetEntry> ProjectBudgetEntryProjects { get; set; } = new List<ProjectBudgetEntry>();
+    public virtual ICollection<ProjectBudgetEntry> ProjectBudgetEntries { get; set; } = new List<ProjectBudgetEntry>();
 
     public virtual ProjectManager? ProjectManager { get; set; }
 

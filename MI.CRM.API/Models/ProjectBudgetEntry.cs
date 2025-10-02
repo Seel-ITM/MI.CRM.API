@@ -19,8 +19,6 @@ public partial class ProjectBudgetEntry
 
     public string? Notes { get; set; }
 
-    public virtual Project AwardNumberNavigation { get; set; } = null!;
-
     public virtual BudgetCategory Category { get; set; } = null!;
 
     public virtual Project Project { get; set; } = null!;

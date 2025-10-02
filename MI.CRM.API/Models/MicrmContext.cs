@@ -207,18 +207,12 @@ public partial class MicrmContext : DbContext
                 .HasMaxLength(255)
                 .IsUnicode(false);
 
-            entity.HasOne(d => d.AwardNumberNavigation).WithMany(p => p.ProjectBudgetEntryAwardNumberNavigations)
-                .HasPrincipalKey(p => p.AwardNumber)
-                .HasForeignKey(d => d.AwardNumber)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_ProjectBudgetEntries_AwardNumber");
-
             entity.HasOne(d => d.Category).WithMany(p => p.ProjectBudgetEntries)
                 .HasForeignKey(d => d.CategoryId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_ProjectBudgetEntries_Category");
 
-            entity.HasOne(d => d.Project).WithMany(p => p.ProjectBudgetEntryProjects)
+            entity.HasOne(d => d.Project).WithMany(p => p.ProjectBudgetEntries)
                 .HasForeignKey(d => d.ProjectId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_ProjectBudgetEntries_Project");
