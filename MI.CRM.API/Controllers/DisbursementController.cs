@@ -104,11 +104,15 @@ namespace MI.CRM.API.Controllers
         {
             var disbursements = await _context.DisbursementLogs.AsNoTracking().Where(d => d.ProjectId == projectId && d.CategoryId == categoryId).Select(d => new DisbursementDto
             {
+                DisbursementLogId = d.Id,
                 ProjectId = d.ProjectId,
                 CategoryId = d.CategoryId,
                 Description = d.Description,
                 DisbursementDate = d.DisbursementDate,
-                DisbursedAmount = d.DisbursedAmount
+                DisbursedAmount = d.DisbursedAmount,
+                Rate = d.Rate,
+                Units = d.Units,
+                DocumentId = d.DocumentId,
             }).ToListAsync();
             return Ok(disbursements);
         }
@@ -150,6 +154,167 @@ namespace MI.CRM.API.Controllers
 
             return Ok(claimNumbers);
         }
+
+        [HttpGet("DisbursementLog/{id}")]
+        public async Task<IActionResult> GetDisbursementLogById(int id)
+        {
+            if (id < 0)
+                return BadRequest("id must be greater than 0.");
+
+            var disbursement = await _context.DisbursementLogs
+                .AsNoTracking()
+                .Where(d => d.Id == id)
+                .Select(d => new DisbursementDto
+                {
+                    DisbursementLogId = d.Id,
+                    ProjectId = d.ProjectId,
+                    CategoryId = d.CategoryId,
+                    Description = d.Description,
+                    DisbursementDate = d.DisbursementDate,
+                    DisbursedAmount = d.DisbursedAmount,
+                    Rate = d.Rate,
+                    Units = d.Units
+                })
+                .FirstOrDefaultAsync();
+
+            if (disbursement == null)
+                return NotFound("No record found for the given id.");
+
+            return Ok(disbursement);
+        }
+
+        [HttpPut("update-disbursement")]
+        public async Task<IActionResult> UpdateDisbursement([FromBody] DisbursementDto dto)
+        {
+            if (dto == null) return BadRequest("Invalid data.");
+            if (dto.ProjectId < 1 || dto.CategoryId < 1 || dto.DisbursementLogId < 1)
+                return BadRequest("Missing or invalid IDs.");
+
+            var disbursementEntry = await _context.DisbursementLogs.FindAsync(dto.DisbursementLogId);
+            if (disbursementEntry == null) return NotFound("Disbursement not found.");
+
+            var projectEntry = await _context.Projects.FindAsync(dto.ProjectId);
+            if (projectEntry == null) return NotFound("Project not found.");
+
+            var projectBudgetEntriesForCategory = await _context.ProjectBudgetEntries
+                .Where(pbe => pbe.ProjectId == dto.ProjectId && pbe.CategoryId == dto.CategoryId)
+                .ToListAsync();
+
+            if (projectBudgetEntriesForCategory.Count < 3)
+                return BadRequest("Incomplete budget entries for category.");
+
+            var disbursedEntry = projectBudgetEntriesForCategory.FirstOrDefault(x => x.TypeId == 2);
+            var remainingEntry = projectBudgetEntriesForCategory.FirstOrDefault(x => x.TypeId == 3);
+
+            if (disbursedEntry == null || remainingEntry == null)
+                return BadRequest("Missing expected budget entry types.");
+
+            // Step 1: Revert old
+            projectEntry.TotalDisbursedBudget -= disbursementEntry.DisbursedAmount;
+            projectEntry.TotalRemainingBudget += disbursementEntry.DisbursedAmount;
+
+            disbursedEntry.Amount -= disbursementEntry.DisbursedAmount;
+            remainingEntry.Amount += disbursementEntry.DisbursedAmount;
+
+            // Step 2: Apply new
+            projectEntry.TotalDisbursedBudget += dto.DisbursedAmount;
+            projectEntry.TotalRemainingBudget -= dto.DisbursedAmount;
+
+            disbursedEntry.Amount += dto.DisbursedAmount;
+            remainingEntry.Amount -= dto.DisbursedAmount;
+
+            // Safety check
+            if (remainingEntry.Amount < 0 || projectEntry.TotalRemainingBudget < 0)
+                return BadRequest("Disbursement exceeds remaining budget.");
+
+            // Update the disbursement record
+            disbursementEntry.Description = dto.Description;
+            disbursementEntry.DisbursementDate = dto.DisbursementDate;
+            disbursementEntry.DisbursedAmount = dto.DisbursedAmount;
+            disbursementEntry.ClaimNumber = dto.ClaimNumber;
+            disbursementEntry.DocumentId = dto.DocumentId;
+            disbursementEntry.Units = dto.Units;
+            disbursementEntry.Rate = dto.Rate;
+
+            await _context.SaveChangesAsync();
+
+            // ✅ Return a lightweight DTO instead of the EF entity
+            var updatedDto = new DisbursementDto
+            {
+                DisbursementLogId = disbursementEntry.Id,
+                ProjectId = disbursementEntry.ProjectId,
+                CategoryId = dto.CategoryId,
+                Description = disbursementEntry.Description,
+                DisbursementDate = disbursementEntry.DisbursementDate,
+                DisbursedAmount = disbursementEntry.DisbursedAmount,
+                ClaimNumber = disbursementEntry.ClaimNumber,
+                DocumentId = disbursementEntry.DocumentId,
+                Units = disbursementEntry.Units,
+                Rate = disbursementEntry.Rate
+            };
+
+            return Ok(new
+            {
+                Message = "Disbursement updated successfully.",
+                UpdatedDisbursement = updatedDto
+            });
+        }
+
+        [HttpDelete("delete-disbursement/{disbursementLogId:int}")]
+        public async Task<IActionResult> DeleteDisbursement(int disbursementLogId)
+        {
+            if (disbursementLogId < 1)
+                return BadRequest("Invalid disbursement ID.");
+
+            // 🔹 Find disbursement entry
+            var disbursementEntry = await _context.DisbursementLogs.FindAsync(disbursementLogId);
+            if (disbursementEntry == null)
+                return NotFound("Disbursement not found.");
+
+            // 🔹 Validate related project
+            var projectEntry = await _context.Projects.FindAsync(disbursementEntry.ProjectId);
+            if (projectEntry == null)
+                return NotFound("Related project not found.");
+
+            // 🔹 Get category from disbursement
+            var categoryId = disbursementEntry.CategoryId;
+
+            // 🔹 Fetch related budget entries for that category
+            var projectBudgetEntriesForCategory = await _context.ProjectBudgetEntries
+                .Where(pbe => pbe.ProjectId == disbursementEntry.ProjectId && pbe.CategoryId == categoryId)
+                .ToListAsync();
+
+            if (projectBudgetEntriesForCategory.Count != 3)
+                return BadRequest("Improper budget entries for category.");
+
+            var disbursedEntry = projectBudgetEntriesForCategory.FirstOrDefault(x => x.TypeId == 2);
+            var remainingEntry = projectBudgetEntriesForCategory.FirstOrDefault(x => x.TypeId == 3);
+
+            if (disbursedEntry == null || remainingEntry == null)
+                return BadRequest("Missing expected budget entry types.");
+
+            // 🔹 Undo disbursement effects
+            projectEntry.TotalDisbursedBudget -= disbursementEntry.DisbursedAmount;
+            projectEntry.TotalRemainingBudget += disbursementEntry.DisbursedAmount;
+
+            disbursedEntry.Amount -= disbursementEntry.DisbursedAmount;
+            remainingEntry.Amount += disbursementEntry.DisbursedAmount;
+
+            if (projectEntry.TotalDisbursedBudget < 0) projectEntry.TotalDisbursedBudget = 0;
+            if (remainingEntry.Amount < 0) remainingEntry.Amount = 0;
+
+            // 🔹 Remove the disbursement record
+            _context.DisbursementLogs.Remove(disbursementEntry);
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                Message = "Disbursement deleted successfully.",
+                DeletedDisbursementId = disbursementLogId
+            });
+        }
+
+
 
 
     }

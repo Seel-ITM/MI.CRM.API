@@ -243,6 +243,174 @@ namespace MI.CRM.API.Controllers
             return Ok(tasks);
         }
 
+        [HttpDelete("delete/{taskId}")]
+        public async Task<IActionResult> DeleteTask(int taskId)
+        {
+            var task = await _context.Tasks.FindAsync(taskId);
+            if (task == null)
+                return NotFound(new { message = "Task not found." });
+
+            var currentUserId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)
+                ? userId
+                : throw new UnauthorizedAccessException("User ID not found in token");
+
+            // Delete all related TaskLogs first
+            var taskLogs = _context.TaskLogs.Where(tl => tl.TaskId == task.Id);
+            _context.TaskLogs.RemoveRange(taskLogs);
+
+            // Now delete the task itself
+            _context.Tasks.Remove(task);
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Task and related logs deleted successfully." });
+        }
+
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateTask(int id, [FromBody] NewTaskDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var task = await _context.Tasks.FindAsync(id);
+            if (task == null)
+                return NotFound(new { message = "Task not found." });
+
+            var currentUserId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)
+                ? userId
+                : throw new UnauthorizedAccessException("User ID not found in token");
+
+            var logs = new List<TaskLog>();
+
+            // Compare and log each field that changed
+            if (task.Title != dto.Title)
+            {
+                logs.Add(new TaskLog
+                {
+                    TaskId = task.Id,
+                    UserId = currentUserId,
+                    ActionType = "Updated",
+                    FieldChanged = "Title",
+                    OldValue = task.Title,
+                    NewValue = dto.Title,
+                    ActionTimestamp = DateTime.UtcNow
+                });
+                task.Title = dto.Title;
+            }
+
+            if (task.Description != dto.Description)
+            {
+                logs.Add(new TaskLog
+                {
+                    TaskId = task.Id,
+                    UserId = currentUserId,
+                    ActionType = "Updated",
+                    FieldChanged = "Description",
+                    OldValue = task.Description,
+                    NewValue = dto.Description,
+                    ActionTimestamp = DateTime.UtcNow
+                });
+                task.Description = dto.Description;
+            }
+
+            if (task.StartDate != dto.StartDate)
+            {
+                logs.Add(new TaskLog
+                {
+                    TaskId = task.Id,
+                    UserId = currentUserId,
+                    ActionType = "Updated",
+                    FieldChanged = "StartDate",
+                    OldValue = task.StartDate.ToString(),
+                    NewValue = dto.StartDate.ToString(),
+                    ActionTimestamp = DateTime.UtcNow
+                });
+                task.StartDate = dto.StartDate;
+            }
+
+            if (task.EndDate != dto.EndDate)
+            {
+                logs.Add(new TaskLog
+                {
+                    TaskId = task.Id,
+                    UserId = currentUserId,
+                    ActionType = "Updated",
+                    FieldChanged = "EndDate",
+                    OldValue = task.EndDate.ToString(),
+                    NewValue = dto.EndDate.ToString(),
+                    ActionTimestamp = DateTime.UtcNow
+                });
+                task.EndDate = dto.EndDate;
+            }
+
+            if (task.AssignedTo != dto.AssignedTo)
+            {
+                logs.Add(new TaskLog
+                {
+                    TaskId = task.Id,
+                    UserId = currentUserId,
+                    ActionType = "Updated",
+                    FieldChanged = "AssignedTo",
+                    OldValue = task.AssignedTo?.ToString(),
+                    NewValue = dto.AssignedTo?.ToString(),
+                    ActionTimestamp = DateTime.UtcNow
+                });
+                task.AssignedTo = dto.AssignedTo;
+            }
+
+            if (task.StatusId != dto.StatusId)
+            {
+                logs.Add(new TaskLog
+                {
+                    TaskId = task.Id,
+                    UserId = currentUserId,
+                    ActionType = "Updated",
+                    FieldChanged = "StatusId",
+                    OldValue = task.StatusId.ToString(),
+                    NewValue = dto.StatusId.ToString(),
+                    ActionTimestamp = DateTime.UtcNow
+                });
+                task.StatusId = dto.StatusId;
+            }
+
+            if (task.ActivityTypeId != dto.ActivityTypeId)
+            {
+                logs.Add(new TaskLog
+                {
+                    TaskId = task.Id,
+                    UserId = currentUserId,
+                    ActionType = "Updated",
+                    FieldChanged = "ActivityTypeId",
+                    OldValue = task.ActivityTypeId.ToString(),
+                    NewValue = dto.ActivityTypeId.ToString(),
+                    ActionTimestamp = DateTime.UtcNow
+                });
+                task.ActivityTypeId = dto.ActivityTypeId;
+            }
+
+            if (task.DeliverableType != dto.DeliverableType)
+            {
+                logs.Add(new TaskLog
+                {
+                    TaskId = task.Id,
+                    UserId = currentUserId,
+                    ActionType = "Updated",
+                    FieldChanged = "DeliverableType",
+                    OldValue = task.DeliverableType,
+                    NewValue = dto.DeliverableType,
+                    ActionTimestamp = DateTime.UtcNow
+                });
+                task.DeliverableType = dto.DeliverableType;
+            }
+
+            if (logs.Any())
+                _context.TaskLogs.AddRange(logs);
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Task updated successfully." });
+        }
 
     }
 }
