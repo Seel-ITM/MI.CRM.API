@@ -173,7 +173,8 @@ namespace MI.CRM.API.Controllers
                     DisbursementDate = d.DisbursementDate,
                     DisbursedAmount = d.DisbursedAmount,
                     Rate = d.Rate,
-                    Units = d.Units
+                    Units = d.Units,
+                    ClaimNumber = d.ClaimNumber
                 })
                 .FirstOrDefaultAsync();
 
