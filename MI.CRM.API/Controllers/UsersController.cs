@@ -43,7 +43,8 @@ namespace MI.CRM.API.Controllers
                 UserId = u.UserId,
                 Name = u.Name,
                 Email = u.Email,
-                RoleId = u.RoleId
+                RoleId = u.RoleId,
+                ImageUrl = u.ImageUrl,
             })
             .FirstOrDefaultAsync(u => u.UserId == id);
 
@@ -67,6 +68,7 @@ namespace MI.CRM.API.Controllers
                 Name = user.Name,
                 Email = user.Email,
                 RoleId = user.RoleId,
+                ImageUrl = user.ImageUrl
             });
         }
     }

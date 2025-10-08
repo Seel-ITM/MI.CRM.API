@@ -19,6 +19,8 @@ public partial class User
 
     public int? CreatedBy { get; set; }
 
+    public string? ImageUrl { get; set; }
+
     public virtual ICollection<DisbursementLog> DisbursementLogs { get; set; } = new List<DisbursementLog>();
 
     public virtual ICollection<Document> DocumentDeletedByNavigations { get; set; } = new List<Document>();
