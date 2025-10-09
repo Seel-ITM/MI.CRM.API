@@ -92,7 +92,7 @@ namespace MI.CRM.API.Controllers
         {
             var documents = await _context.Documents
                 .Include(d => d.UploadedByNavigation)
-                .Where(d => d.ProjectId == projectId)
+                .Where(d => d.ProjectId == projectId && !d.IsDeleted)
                 .Select(d => new DocumentDto
                 {
                     Id = d.Id,
@@ -108,6 +108,41 @@ namespace MI.CRM.API.Controllers
 
             return Ok(documents);
         }
+
+        [HttpDelete("delete/{documentId}")]
+        public async Task<IActionResult> SoftDeleteDocument(int documentId)
+        {
+            // Find the document by ID
+            var document = await _context.Documents.FirstOrDefaultAsync(d => d.Id == documentId);
+
+            if (document == null)
+                return NotFound("Document not found.");
+
+            if (document.IsDeleted)
+                return BadRequest("Document is already deleted.");
+
+            // Get current user ID from token
+            var userId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsedUserId)
+                ? parsedUserId
+                : throw new UnauthorizedAccessException("User ID not found in token.");
+
+            // Mark as deleted
+            document.IsDeleted = true;
+            document.DeletedAt = DateTime.UtcNow;
+            document.DeletedBy = userId;
+
+            _context.Documents.Update(document);
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                message = "Document marked as deleted successfully.",
+                documentId = document.Id,
+                deletedBy = document.DeletedBy,
+                deletedAt = document.DeletedAt
+            });
+        }
+
 
     }
 }

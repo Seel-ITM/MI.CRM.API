@@ -21,6 +21,8 @@ public partial class Document
 
     public DateTime? DeletedAt { get; set; }
 
+    public bool IsDeleted { get; set; }
+
     public virtual User? DeletedByNavigation { get; set; }
 
     public virtual ICollection<DisbursementLog> DisbursementLogs { get; set; } = new List<DisbursementLog>();
