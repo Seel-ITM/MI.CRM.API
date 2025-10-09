@@ -49,6 +49,8 @@ public partial class Project
 
     public virtual ProjectManager? ProjectManager { get; set; }
 
+    public virtual ICollection<ProjectSubcontractorMapping> ProjectSubcontractorMappings { get; set; } = new List<ProjectSubcontractorMapping>();
+
     public virtual SubContractor? SubContractor { get; set; }
 
     public virtual ICollection<Task> Tasks { get; set; } = new List<Task>();

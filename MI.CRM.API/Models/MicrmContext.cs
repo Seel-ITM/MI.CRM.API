@@ -33,6 +33,8 @@ public partial class MicrmContext : DbContext
 
     public virtual DbSet<ProjectManager> ProjectManagers { get; set; }
 
+    public virtual DbSet<ProjectSubcontractorMapping> ProjectSubcontractorMappings { get; set; }
+
     public virtual DbSet<Role> Roles { get; set; }
 
     public virtual DbSet<SubContractor> SubContractors { get; set; }
@@ -232,6 +234,27 @@ public partial class MicrmContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.ProjectManagers)
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("FK__ProjectMa__UserI__4AB81AF0");
+        });
+
+        modelBuilder.Entity<ProjectSubcontractorMapping>(entity =>
+        {
+            entity.HasKey(e => new { e.ProjectId, e.SubcontractorId }).HasName("PK__ProjectS__583A0543402FB3DC");
+
+            entity.ToTable("ProjectSubcontractorMapping");
+
+            entity.Property(e => e.CreatedOn)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.Project).WithMany(p => p.ProjectSubcontractorMappings)
+                .HasForeignKey(d => d.ProjectId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__ProjectSu__Proje__0A9D95DB");
+
+            entity.HasOne(d => d.Subcontractor).WithMany(p => p.ProjectSubcontractorMappings)
+                .HasForeignKey(d => d.SubcontractorId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__ProjectSu__Subco__0B91BA14");
         });
 
         modelBuilder.Entity<Role>(entity =>

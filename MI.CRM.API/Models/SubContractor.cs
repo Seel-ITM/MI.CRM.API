@@ -11,5 +11,7 @@ public partial class SubContractor
 
     public string? Email { get; set; }
 
+    public virtual ICollection<ProjectSubcontractorMapping> ProjectSubcontractorMappings { get; set; } = new List<ProjectSubcontractorMapping>();
+
     public virtual ICollection<Project> Projects { get; set; } = new List<Project>();
 }

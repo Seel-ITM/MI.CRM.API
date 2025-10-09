@@ -67,7 +67,6 @@ namespace MI.CRM.API.Controllers
             var project = await _context.Projects
                 .Include(p => p.ProjectManager)
                     .ThenInclude(pm => pm.User)
-                .Include(p => p.SubContractor)
                 .FirstOrDefaultAsync(p => p.ProjectId == projectId);
 
             if (project == null)
@@ -92,22 +91,29 @@ namespace MI.CRM.API.Controllers
                 });
             }
 
-            // Add SubContractor if exists
-            if (project.SubContractor != null)
+            // 🔹 Fetch all subcontractors via the mapping table
+            var subcontractors = await _context.ProjectSubcontractorMappings
+                .Where(m => m.ProjectId == projectId)
+                .Include(m => m.Subcontractor)
+                .Select(m => m.Subcontractor)
+                .ToListAsync();
+
+            foreach (var sub in subcontractors)
             {
                 stakeholders.Add(new StakeHolderDto
                 {
                     Subcontractor = new SubcontractorDto
                     {
-                        Id = project.SubContractor.SubContractorId,
-                        Name = project.SubContractor.Name,
-                        Email = project.SubContractor.Email,
+                        Id = sub.SubContractorId,
+                        Name = sub.Name,
+                        Email = sub.Email
                     }
                 });
             }
 
             return Ok(stakeholders);
         }
+
 
     }
 }

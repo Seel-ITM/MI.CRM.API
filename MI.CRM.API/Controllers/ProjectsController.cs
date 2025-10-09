@@ -297,6 +297,15 @@ namespace MI.CRM.API.Controllers
             _context.Projects.Add(project);
             await _context.SaveChangesAsync(); // This will populate project.ProjectId
 
+            _context.ProjectSubcontractorMappings.Add(new ProjectSubcontractorMapping
+            {
+                ProjectId = project.ProjectId,
+                SubcontractorId = subcontractorId
+            });
+
+            await _context.SaveChangesAsync();
+
+
             // Create budget entries
             decimal totalApprovedBudget = 0;
             foreach (var entry in dto.ProjectBudgetInfo)
@@ -642,7 +651,30 @@ namespace MI.CRM.API.Controllers
             return Ok(new { message = "Done" });
         }
 
+        [HttpPost("AddSubcontractor")]
+        public async Task<IActionResult> AddSubcontractor([FromBody] NewSubcontractorDto dto)
+        {
+            SubContractor subContractor = new SubContractor
+            {
+                Name = dto.Name,
+                Email = dto.Email
+            };
 
+            await _context.SubContractors.AddAsync(subContractor);
+
+            await _context.SaveChangesAsync();
+
+            await _context.ProjectSubcontractorMappings.AddAsync(new ProjectSubcontractorMapping
+            {
+                ProjectId = dto.ProjectId,
+                SubcontractorId = subContractor.SubContractorId
+            });
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new {message = "Subcontractor added successfully", projectId = dto.ProjectId, subcontractorId = subContractor.SubContractorId});
+
+        }
 
     }
 }
