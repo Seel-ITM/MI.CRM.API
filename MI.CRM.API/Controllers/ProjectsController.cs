@@ -654,16 +654,30 @@ namespace MI.CRM.API.Controllers
         [HttpPost("AddSubcontractor")]
         public async Task<IActionResult> AddSubcontractor([FromBody] NewSubcontractorDto dto)
         {
-            SubContractor subContractor = new SubContractor
+            // Create the new subcontractor
+            var subContractor = new SubContractor
             {
                 Name = dto.Name,
                 Email = dto.Email
             };
 
             await _context.SubContractors.AddAsync(subContractor);
-
             await _context.SaveChangesAsync();
 
+            // Fetch the project to check for primary subcontractor
+            var project = await _context.Projects.FindAsync(dto.ProjectId);
+            if (project == null)
+                return NotFound(new { message = "Project not found." });
+
+            // If the project's SubcontractorId is null, assign the new one as primary
+            if (project.SubContractorId == null)
+            {
+                project.SubContractorId = subContractor.SubContractorId;
+                _context.Projects.Update(project);
+                await _context.SaveChangesAsync();
+            }
+
+            // Always add mapping entry
             await _context.ProjectSubcontractorMappings.AddAsync(new ProjectSubcontractorMapping
             {
                 ProjectId = dto.ProjectId,
@@ -672,9 +686,202 @@ namespace MI.CRM.API.Controllers
 
             await _context.SaveChangesAsync();
 
-            return Ok(new {message = "Subcontractor added successfully", projectId = dto.ProjectId, subcontractorId = subContractor.SubContractorId});
-
+            return Ok(new
+            {
+                message = "Subcontractor added successfully",
+                projectId = dto.ProjectId,
+                subcontractorId = subContractor.SubContractorId,
+                isPrimary = project.SubContractorId == subContractor.SubContractorId
+            });
         }
+
+
+        [HttpPut("UpdateSubcontractor/{id}")]
+        public async Task<IActionResult> UpdateSubcontractor(int id, [FromBody] SubcontractorDto dto)
+        {
+            if (dto == null)
+                return BadRequest(new { Message = "Invalid subcontractor data." });
+
+            var subcontractor = await _context.SubContractors
+                .FirstOrDefaultAsync(s => s.SubContractorId == id);
+
+            if (subcontractor == null)
+                return NotFound(new { Message = $"Subcontractor with ID {id} not found." });
+
+            // Update fields
+            subcontractor.Name = dto.Name;
+            subcontractor.Email = dto.Email;
+
+            // Save changes
+            await _context.SaveChangesAsync();
+
+            // Return updated subcontractor
+            var updatedDto = new SubcontractorDto
+            {
+                Id = subcontractor.SubContractorId,
+                Name = subcontractor.Name,
+                Email = subcontractor.Email
+            };
+
+            return Ok(updatedDto);
+        }
+
+        [HttpDelete("DeleteSubcontractor/{projectId}/{subcontractorId}")]
+        public async Task<IActionResult> DeleteSubcontractor(int projectId, int subcontractorId)
+        {
+            // Find the project
+            var project = await _context.Projects
+                .FirstOrDefaultAsync(p => p.ProjectId == projectId);
+
+            if (project == null)
+                return NotFound(new { message = "Project not found" });
+
+            // Find the subcontractor
+            var subcontractor = await _context.SubContractors
+                .FirstOrDefaultAsync(s => s.SubContractorId == subcontractorId);
+
+            if (subcontractor == null)
+                return NotFound(new { message = "Subcontractor not found" });
+
+            // Remove the mapping entry for this project-subcontractor pair
+            var mapping = await _context.ProjectSubcontractorMappings.FindAsync(projectId, subcontractorId);
+                //.FirstOrDefaultAsync(m => m.ProjectId == projectId && m.SubcontractorId == subcontractorId);
+
+            if (mapping != null)
+            {
+                _context.ProjectSubcontractorMappings.Remove(mapping);
+            }
+
+            // Check if the subcontractor being deleted is the primary one
+            bool isPrimary = project.SubContractorId == subcontractorId;
+
+            // Remove the subcontractor
+            _context.SubContractors.Remove(subcontractor);
+
+            await _context.SaveChangesAsync();
+
+            // If it was primary, assign a new one
+            if (isPrimary)
+            {
+                // Find the most recently added subcontractor (based on SubContractorId) for this project
+                var newPrimaryMapping = await _context.ProjectSubcontractorMappings
+                    .Where(m => m.ProjectId == projectId)
+                    .OrderByDescending(m => m.CreatedOn) // assuming higher ID = more recent
+                    .FirstOrDefaultAsync();
+
+                if (newPrimaryMapping != null)
+                {
+                    project.SubContractorId = newPrimaryMapping.SubcontractorId;
+                }
+                else
+                {
+                    // No subcontractors left
+                    project.SubContractorId = null;
+                }
+
+                _context.Projects.Update(project);
+                await _context.SaveChangesAsync();
+            }
+
+            return Ok(new
+            {
+                message = isPrimary
+                    ? "Primary subcontractor deleted. New primary assigned (if available)."
+                    : "Subcontractor deleted successfully.",
+                projectId,
+                deletedSubcontractorId = subcontractorId,
+                newPrimarySubcontractorId = project.SubContractorId
+            });
+        }
+
+        [HttpDelete("DeleteProject/{projectId}")]
+        public async Task<IActionResult> DeleteProject(int projectId)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                var project = await _context.Projects
+                    .Include(p => p.Budgets)
+                    .Include(p => p.DisbursementLogs)
+                    .Include(p => p.Documents)
+                    .Include(p => p.ProjectBudgetEntries)
+                    .Include(p => p.ProjectSubcontractorMappings)
+                        .ThenInclude(psm => psm.Subcontractor)
+                    .Include(p => p.Tasks)
+                        .ThenInclude(t => t.TaskLogs)
+                    .FirstOrDefaultAsync(p => p.ProjectId == projectId);
+
+                if (project == null)
+                    return NotFound("Project not found.");
+
+                // 1️⃣ Delete task logs first
+                foreach (var task in project.Tasks)
+                {
+                    if (task.TaskLogs?.Any() == true)
+                        _context.TaskLogs.RemoveRange(task.TaskLogs);
+                }
+
+                // 2️⃣ Delete tasks
+                if (project.Tasks?.Any() == true)
+                    _context.Tasks.RemoveRange(project.Tasks);
+
+                // 3️⃣ Delete other related entities
+                if (project.Documents?.Any() == true)
+                    _context.Documents.RemoveRange(project.Documents);
+
+                if (project.DisbursementLogs?.Any() == true)
+                    _context.DisbursementLogs.RemoveRange(project.DisbursementLogs);
+
+                if (project.Budgets?.Any() == true)
+                    _context.Budgets.RemoveRange(project.Budgets);
+
+                if (project.ProjectBudgetEntries?.Any() == true)
+                    _context.ProjectBudgetEntries.RemoveRange(project.ProjectBudgetEntries);
+
+                // 4️⃣ Delete mappings first (BEFORE deleting subcontractors)
+                var subcontractorsToCheck = project.ProjectSubcontractorMappings
+                    .Select(psm => psm.Subcontractor)
+                    .Where(s => s != null)
+                    .Distinct()
+                    .ToList();
+
+                if (project.ProjectSubcontractorMappings?.Any() == true)
+                    _context.ProjectSubcontractorMappings.RemoveRange(project.ProjectSubcontractorMappings);
+
+                await _context.SaveChangesAsync(); // Save here to ensure FKs are cleared
+
+                // 5️⃣ Now delete subcontractors that are not linked anywhere else
+                foreach (var subcontractor in subcontractorsToCheck)
+                {
+                    bool isStillLinked = await _context.ProjectSubcontractorMappings
+                        .AnyAsync(psm => psm.SubcontractorId == subcontractor.SubContractorId);
+
+                    if (!isStillLinked)
+                        _context.SubContractors.Remove(subcontractor);
+                }
+
+                // 6️⃣ Finally delete the project itself
+                _context.Projects.Remove(project);
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return Ok(new { message = "Project and related data deleted successfully." });
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return StatusCode(500, new
+                {
+                    message = "Failed to delete project.",
+                    error = ex.Message,
+                    inner = ex.InnerException?.Message
+                });
+            }
+        }
+
+
 
     }
 }
