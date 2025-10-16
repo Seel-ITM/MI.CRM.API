@@ -32,60 +32,57 @@ namespace MI.CRM.API.Controllers
         }
 
         [HttpPost("upload")]
-        public async Task<IActionResult> Upload([FromForm] IFormFile file, [FromForm] int projectId)
+        public async Task<IActionResult> Upload([FromForm] List<IFormFile> files, [FromForm] int projectId)
         {
-            if (file == null || file.Length == 0)
-                return BadRequest("No file uploaded.");
+            if (files == null || files.Count == 0)
+                return BadRequest("No files uploaded.");
 
-            // 1️⃣ Validate file type (optional but recommended)
-            var allowedExtensions = new[] { ".pdf", ".docx", ".xlsx", ".png", ".jpg", ".jpeg" };
-            var fileExtension = Path.GetExtension(file.FileName).ToLower();
-            if (!allowedExtensions.Contains(fileExtension))
-                return BadRequest("File type not allowed.");
-
-            // 2️⃣ Get the container client
             var containerClient = _blobServiceClient.GetBlobContainerClient(_containerName);
-            await containerClient.CreateIfNotExistsAsync(PublicAccessType.Blob); // allows public read
+            await containerClient.CreateIfNotExistsAsync(PublicAccessType.Blob);
 
-            // 3️⃣ Generate a unique file name to avoid overwriting
-            var uniqueFileName = $"{Guid.NewGuid()}{fileExtension}";
-            var blobClient = containerClient.GetBlobClient(uniqueFileName);
+            var allowedExtensions = new[] { ".pdf", ".docx", ".xlsx", ".png", ".jpg", ".jpeg", ".zip", ".rar", ".csv" };
+            var uploadedDocs = new List<object>();
 
-            // 4️⃣ Upload the file
-            using (var stream = file.OpenReadStream())
+            foreach (var file in files)
             {
-                var blobHttpHeaders = new Azure.Storage.Blobs.Models.BlobHttpHeaders
+                var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
+
+                if (!allowedExtensions.Contains(fileExtension))
+                    continue; // skip disallowed file types
+
+                var uniqueFileName = $"{Guid.NewGuid()}{fileExtension}";
+                var blobClient = containerClient.GetBlobClient(uniqueFileName);
+
+                using var stream = file.OpenReadStream();
+                await blobClient.UploadAsync(stream, new BlobUploadOptions
                 {
-                    ContentType = file.ContentType // ensures browser can open the file
-                };
-                await blobClient.UploadAsync(stream, new Azure.Storage.Blobs.Models.BlobUploadOptions
-                {
-                    HttpHeaders = blobHttpHeaders,
+                    HttpHeaders = new BlobHttpHeaders { ContentType = file.ContentType }
                 });
+
+                var url = blobClient.Uri.ToString();
+
+                var document = new Document
+                {
+                    DocumentName = file.FileName,
+                    DocumentUrl = url,
+                    ProjectId = projectId,
+                    UploadedBy = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0"),
+                    UploadedAt = DateTime.UtcNow
+                };
+
+                _context.Documents.Add(document);
+                uploadedDocs.Add(new { document.Id, document.DocumentName, url });
             }
 
-            var url = blobClient.Uri.ToString();
-
-            // 5️⃣ Save metadata in DB
-            var document = new Document
-            {
-                DocumentName = file.FileName,
-                DocumentUrl = url,
-                ProjectId = projectId,
-                UploadedBy = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : throw new UnauthorizedAccessException("User ID not found in token"), // replace with your user retrieval logic
-                UploadedAt = DateTime.UtcNow
-            };
-
-            _context.Documents.Add(document);
             await _context.SaveChangesAsync();
 
             return Ok(new
             {
-                message = "File uploaded successfully",
-                url,
-                documentId = document.Id
+                message = $"{uploadedDocs.Count} file(s) uploaded successfully.",
+                documents = uploadedDocs
             });
         }
+
 
         [HttpGet("project/{projectId}")]
         public async Task<ActionResult<IEnumerable<DocumentDto>>> GetDocumentsByProject(int projectId)
