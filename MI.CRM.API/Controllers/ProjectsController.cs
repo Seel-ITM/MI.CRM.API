@@ -887,7 +887,7 @@ namespace MI.CRM.API.Controllers
         public async Task<IActionResult> GenerateProjectsReport(int projectId)
         {
             var project = await _context.Projects
-                .Include(p => p.Tasks)
+                .Include(p => p.Tasks).ThenInclude(task=> task.Status)
                 .Include(p => p.ProjectManager)
                     .ThenInclude(pm => pm.User)
                 .FirstOrDefaultAsync(p => p.ProjectId == projectId);
