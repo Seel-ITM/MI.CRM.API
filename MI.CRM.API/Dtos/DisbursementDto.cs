@@ -5,6 +5,7 @@
         public int DisbursementLogId { get; set; } = 0;
         public int ProjectId { get; set; }
         public int CategoryId { get; set; }
+        public string CategoryName { get; set; } = string.Empty;
         public string? Description { get; set; }
         public DateTime DisbursementDate { get; set; }
         public decimal DisbursedAmount { get; set; }

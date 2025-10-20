@@ -1,9 +1,11 @@
-﻿using MI.CRM.API.Dtos;
+﻿using MI.CRM.API.Documents;
+using MI.CRM.API.Dtos;
 using MI.CRM.API.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Fluent;
 using System.Security.Claims;
 using System.Text.Json;
 
@@ -880,6 +882,179 @@ namespace MI.CRM.API.Controllers
                 });
             }
         }
+
+        [HttpGet("Report/{projectId}")]
+        public async Task<IActionResult> GenerateProjectsReport(int projectId)
+        {
+            var project = await _context.Projects
+                .Include(p => p.Tasks)
+                .Include(p => p.ProjectManager)
+                    .ThenInclude(pm => pm.User)
+                .FirstOrDefaultAsync(p => p.ProjectId == projectId);
+
+            if (project == null)
+                return NotFound();
+
+            var toDoTasks = project.Tasks.Count(t => t.StatusId == 1);
+            var completedTasks = project.Tasks.Count(t => t.StatusId == 3);
+            var remainingTasks = project.Tasks.Count(t => t.StatusId != 3);
+
+            // 🔹 Initialize ReportDto
+            var reportDto = new ReportDto
+            {
+                Project = new ProjectDto
+                {
+                    ProjectId = projectId,
+                    Title = project.Title,
+                    AwardNumber = project.AwardNumber,
+                    StartDate = project.StartDate,
+                    EndDate = project.EndDate,
+                    State = project.State,
+                    ProjectStatus = project.Status,
+                    TotalApprovedBudget = project.TotalApprovedBudget,
+                    TotalDisbursedBudget = project.TotalDisbursedBudget,
+                    TotalRemainingBudget = project.TotalRemainingBudget,
+                }
+            };
+
+            // 🔹 Project Overview
+            reportDto.ProjectOverview = new Dictionary<string, string>
+            {
+                ["Project ID"] = project.AwardNumber ?? "-",
+                ["Project Title"] = project.Title ?? "-",
+                ["Company Name"] = project.Company ?? "-",
+                ["Agency"] = project.Agency ?? "-",
+                ["Category"] = project.Category ?? "-",
+                ["State"] = project.State ?? "-",
+                ["Start Date"] = project.StartDate?.ToString("dd MMM yyyy") ?? "-",
+                ["End Date"] = project.EndDate?.ToString("dd MMM yyyy") ?? "-",
+                ["Approved Budget"] = project.TotalApprovedBudget.HasValue ? $"${project.TotalApprovedBudget.Value:N2}" : "-",
+                ["Disbursed Budget"] = project.TotalDisbursedBudget.HasValue ? $"${project.TotalDisbursedBudget.Value:N2}" : "-",
+                ["Remaining Budget"] = project.TotalRemainingBudget.HasValue ? $"${project.TotalRemainingBudget.Value:N2}" : "-",
+                ["To Do Tasks"] = toDoTasks.ToString(),
+                ["Completed Tasks"] = completedTasks.ToString(),
+                ["Remaining Tasks"] = remainingTasks.ToString(),
+                ["Status"] = project.Status ?? "-",
+                ["Project Status"] = project.ProjectStatus ?? "-"
+            };
+
+            // 🔹 Tasks
+            reportDto.Tasks = project.Tasks.Select(t => new TaskDto
+            {
+                Id = t.Id,
+                Title = t.Title,
+                Description = t.Description,
+                StartDate = t.StartDate,
+                EndDate = t.EndDate,
+                AssignedTo = t.AssignedTo,
+                AssigneeName = t.AssignedToNavigation?.Name ?? string.Empty,
+                StatusId = t.StatusId,
+                StatusName = t.Status?.Name ?? string.Empty,
+                StatusColor = t.Status?.Color ?? string.Empty,
+                ActivityTypeId = t.ActivityTypeId,
+                ActivityTypeName = t.ActivityType?.Name ?? string.Empty,
+                DeliverableType = t.DeliverableType,
+                CompletedOn = t.CompletedOn,
+                CompletedByName = t.CompletedByNavigation?.Name ?? string.Empty,
+            }).ToList();
+
+            // 🔹 Stakeholders
+            var stakeholders = new List<StakeHolderDto>();
+
+            if (project.ProjectManager != null)
+            {
+                stakeholders.Add(new StakeHolderDto
+                {
+                    ProjectManageer = new ProjectMangerDto
+                    {
+                        Id = project.ProjectManager.ProjectManagerId,
+                        UserId = project.ProjectManager.User?.UserId,
+                        Name = project.ProjectManager.User?.Name,
+                        Email = project.ProjectManager.User?.Email
+                    }
+                });
+            }
+
+            var subcontractors = await _context.ProjectSubcontractorMappings
+                .Where(m => m.ProjectId == projectId)
+                .Include(m => m.Subcontractor)
+                .Select(m => m.Subcontractor)
+                .ToListAsync();
+
+            foreach (var sub in subcontractors)
+            {
+                stakeholders.Add(new StakeHolderDto
+                {
+                    Subcontractor = new SubcontractorDto
+                    {
+                        Id = sub.SubContractorId,
+                        Name = sub.Name,
+                        Email = sub.Email
+                    }
+                });
+            }
+
+            reportDto.StakeHolders = stakeholders;
+
+            // 🔹 Fetch Project Budget Entries
+            var projectBudgetEntries = await _context.ProjectBudgetEntries
+                .Where(e => e.ProjectId == projectId)
+                .Include(e => e.Category)
+                .Include(e => e.Type)
+                .OrderBy(e => e.CategoryId)
+                .ThenBy(e => e.TypeId)
+                .Select(e => new ProjectBudgetEntryDto
+                {
+                    Id = e.Id,
+                    ProjectId = e.ProjectId,
+                    AwardNumber = e.AwardNumber,
+                    CategoryId = e.CategoryId,
+                    CategoryName = e.Category.Name,
+                    TypeId = e.TypeId,
+                    TypeName = e.Type.Name,
+                    Amount = e.Amount,
+                    Notes = e.Notes
+                })
+                .ToListAsync();
+
+            // 🔹 Fetch All Disbursement Logs Once
+            var disbursements = await _context.DisbursementLogs.Include(d => d.Category)
+                .Where(d => d.ProjectId == projectId)
+                .Select(d => new DisbursementDto
+                {
+                    DisbursementLogId = d.Id,
+                    ProjectId = d.ProjectId,
+                    CategoryId = d.CategoryId,
+                    CategoryName = d.Category.Name,
+                    Description = d.Description,
+                    DisbursementDate = d.DisbursementDate,
+                    DisbursedAmount = d.DisbursedAmount,
+                    Rate = d.Rate,
+                    Units = d.Units,
+                    DocumentId = d.DocumentId,
+                    ClaimNumber = d.ClaimNumber
+                })
+                .ToListAsync();
+
+            // 🔹 Attach Disbursements to Their Category
+            foreach (var entry in projectBudgetEntries)
+            {
+                entry.Disbursements = disbursements
+                    .Where(d => d.CategoryId == entry.CategoryId && entry.TypeId == 2)
+                    .OrderByDescending(d => d.DisbursementDate)
+                    .ToList();
+            }
+
+            reportDto.ProjectBudgetEntries = projectBudgetEntries;
+
+            // 🔹 Generate PDF
+            var document = new ReportDocument(reportDto);
+            var pdfBytes = document.GeneratePdf();
+
+            return File(pdfBytes, "application/pdf", $"ProjectReport_{project.AwardNumber}.pdf");
+        }
+
+
 
 
 

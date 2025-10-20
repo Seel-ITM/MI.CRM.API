@@ -11,5 +11,6 @@
         public string? Notes { get; set; }
         public string? CategoryName { get; set; }
         public string? TypeName { get; set; }
+        public List<DisbursementDto> Disbursements { get; set; }  = new List<DisbursementDto>();
     }
 }
